@@ -40,6 +40,7 @@ public final class JdbcOutboxRepository implements OutboxRepository {
     private static final String PENDING = "PENDING";
     private static final String PROCESSING = "PROCESSING";
     private static final String PUBLISHED = "PUBLISHED";
+    private static final String DEAD = "DEAD";
     private static final int MAX_HEADER_COUNT = 64;
     private static final int MAX_HEADER_BYTES = 1_048_576;
 
@@ -102,7 +103,8 @@ public final class JdbcOutboxRepository implements OutboxRepository {
                     + "created_at TIMESTAMP(6) NOT NULL, "
                     + "available_at TIMESTAMP(6) NOT NULL, "
                     + "lease_expires_at TIMESTAMP(6), "
-                    + "published_at TIMESTAMP(6))");
+                    + "published_at TIMESTAMP(6), "
+                    + "failure_code VARCHAR(128))");
         } catch (RuntimeException exception) {
             throw new OutboxRepositoryException("schema-initialization", exception);
         }
@@ -161,14 +163,20 @@ public final class JdbcOutboxRepository implements OutboxRepository {
             int scanLimit = (int) Math.min(10_000L, Math.max((long) batchSize, (long) batchSize * 4L));
             List<Candidate> candidates = jdbcOperations.query(connection -> {
                 PreparedStatement statement = connection.prepareStatement(
-                        "SELECT event_id, destination, partition_key, payload, headers_data, "
-                                + "attempt_count, created_at FROM " + tableName
-                                + " WHERE (status = ? AND available_at <= ?) "
-                                + "OR (status = ? AND lease_expires_at <= ?) ORDER BY created_at");
+                        "SELECT o.event_id, o.destination, o.partition_key, o.payload, o.headers_data, "
+                                + "o.attempt_count, o.created_at FROM " + tableName + " o "
+                                + "WHERE ((o.status = ? AND o.available_at <= ?) "
+                                + "OR (o.status = ? AND o.lease_expires_at <= ?)) "
+                                + "AND (o.partition_key IS NULL OR NOT EXISTS (SELECT 1 FROM " + tableName + " older "
+                                + "WHERE older.partition_key = o.partition_key AND older.status <> ? AND "
+                                + "(older.created_at < o.created_at OR "
+                                + "(older.created_at = o.created_at AND older.event_id < o.event_id)))) "
+                                + "ORDER BY o.created_at, o.event_id");
                 statement.setString(1, PENDING);
                 statement.setTimestamp(2, nowTimestamp);
                 statement.setString(3, PROCESSING);
                 statement.setTimestamp(4, nowTimestamp);
+                statement.setString(5, PUBLISHED);
                 statement.setMaxRows(scanLimit);
                 return statement;
             }, (resultSet, rowNumber) -> new Candidate(
@@ -262,6 +270,96 @@ public final class JdbcOutboxRepository implements OutboxRepository {
             throw exception;
         } catch (RuntimeException exception) {
             throw new OutboxRepositoryException("release", exception);
+        }
+    }
+
+    /**
+     * 统计待发布和正在租约中的事件数量。
+     *
+     * @return 尚未成功发布的事件数量
+     */
+    @Override
+    public long countPending() {
+        try {
+            Long count = jdbcOperations.queryForObject(
+                    "SELECT COUNT(*) FROM " + tableName + " WHERE status IN (?, ?)",
+                    Long.class,
+                    PENDING,
+                    PROCESSING);
+            return count == null ? 0L : count;
+        } catch (RuntimeException exception) {
+            throw new OutboxRepositoryException("count-pending", exception);
+        }
+    }
+
+    /**
+     * 仅由当前所有者把达到最大尝试次数的事件标记为死信。
+     *
+     * @param claim 发布租约
+     * @param reasonCode 低基数失败原因编码
+     */
+    @Override
+    public void markDead(OutboxClaim claim, String reasonCode) {
+        Objects.requireNonNull(claim, "Outbox 发布租约不能为空");
+        if (reasonCode == null || reasonCode.isBlank() || reasonCode.length() > 128) {
+            throw new IllegalArgumentException("Outbox 死信原因编码不能为空且长度不能超过 128");
+        }
+        try {
+            int updated = jdbcOperations.update(
+                    "UPDATE " + tableName + " SET status = ?, owner_token = NULL, lease_expires_at = NULL, "
+                            + "failure_code = ? WHERE event_id = ? AND status = ? AND owner_token = ?",
+                    DEAD,
+                    reasonCode,
+                    claim.event().id().toString(),
+                    PROCESSING,
+                    claim.ownerToken());
+            if (updated != 1) {
+                throw new OutboxOwnershipLostException();
+            }
+        } catch (OutboxOwnershipLostException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new OutboxRepositoryException("mark-dead", exception);
+        }
+    }
+
+    /**
+     * 将指定死信事件恢复为立即可发布状态并重置尝试次数。
+     *
+     * @param eventId Outbox 事件标识
+     * @return 是否成功恢复
+     */
+    @Override
+    public boolean replayDead(UUID eventId) {
+        Objects.requireNonNull(eventId, "Outbox 事件标识不能为空");
+        try {
+            return jdbcOperations.update(
+                    "UPDATE " + tableName + " SET status = ?, attempt_count = 0, available_at = ?, "
+                            + "failure_code = NULL WHERE event_id = ? AND status = ?",
+                    PENDING,
+                    Timestamp.from(clock.instant()),
+                    eventId.toString(),
+                    DEAD) == 1;
+        } catch (RuntimeException exception) {
+            throw new OutboxRepositoryException("replay-dead", exception);
+        }
+    }
+
+    /**
+     * 统计死信事件数量。
+     *
+     * @return 死信数量
+     */
+    @Override
+    public long countDead() {
+        try {
+            Long count = jdbcOperations.queryForObject(
+                    "SELECT COUNT(*) FROM " + tableName + " WHERE status = ?",
+                    Long.class,
+                    DEAD);
+            return count == null ? 0L : count;
+        } catch (RuntimeException exception) {
+            throw new OutboxRepositoryException("count-dead", exception);
         }
     }
 

@@ -1,0 +1,2 @@
+io.github.zhanghslq.muskit.lifecycle.autoconfigure.MuskitLifecycleAutoConfiguration
+io.github.zhanghslq.muskit.lifecycle.autoconfigure.MuskitLifecycleServletAutoConfiguration

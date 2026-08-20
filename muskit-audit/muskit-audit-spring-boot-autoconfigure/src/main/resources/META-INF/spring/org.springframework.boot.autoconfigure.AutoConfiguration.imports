@@ -1,0 +1,2 @@
+io.github.zhanghslq.muskit.audit.autoconfigure.MuskitAuditJdbcAutoConfiguration
+io.github.zhanghslq.muskit.audit.autoconfigure.MuskitAuditAutoConfiguration

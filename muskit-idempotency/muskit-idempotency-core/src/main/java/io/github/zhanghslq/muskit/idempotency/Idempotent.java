@@ -59,4 +59,11 @@ public @interface Idempotent {
      * @return 成功状态保留时间单位
      */
     TimeUnit retentionUnit() default TimeUnit.HOURS;
+
+    /**
+     * 返回全局启用 lease 续期时当前操作是否参与自动续期。
+     *
+     * @return 是否参与自动续期
+     */
+    boolean autoRenew() default true;
 }

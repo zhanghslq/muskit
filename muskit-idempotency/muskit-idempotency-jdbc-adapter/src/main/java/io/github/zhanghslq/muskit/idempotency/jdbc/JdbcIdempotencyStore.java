@@ -2,6 +2,7 @@ package io.github.zhanghslq.muskit.idempotency.jdbc;
 
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -214,6 +215,41 @@ public final class JdbcIdempotencyStore implements IdempotencyStore {
             return Optional.of(IdempotencyResultCodec.decode(results.getFirst()));
         } catch (RuntimeException exception) {
             throw new IdempotencyStoreException(request.operation(), exception);
+        }
+    }
+
+    /**
+     * 仅由仍持有所有权且尚未过期的调用刷新处理截止时间。
+     *
+     * @param claim 幂等所有权声明
+     * @param processingTimeout 新处理超时时间
+     */
+    @Override
+    public void renew(IdempotencyClaim claim, Duration processingTimeout) {
+        Objects.requireNonNull(claim, "幂等所有权声明不能为空");
+        Objects.requireNonNull(processingTimeout, "处理超时时间不能为空");
+        if (processingTimeout.isZero() || processingTimeout.isNegative()) {
+            throw new IllegalArgumentException("处理超时时间必须为正数");
+        }
+        Instant now = clock.instant();
+        try {
+            int updated = jdbcOperations.update(
+                    "UPDATE " + tableName + " SET processing_expires_at = ? "
+                            + "WHERE operation_name = ? AND idempotency_key = ? AND status = ? AND owner_token = ? "
+                            + "AND processing_expires_at > ?",
+                    Timestamp.from(now.plus(processingTimeout)),
+                    claim.operation(),
+                    claim.key(),
+                    PROCESSING,
+                    claim.ownerToken(),
+                    Timestamp.from(now));
+            if (updated != 1) {
+                throw new IdempotencyOwnershipLostException(claim.operation());
+            }
+        } catch (IdempotencyOwnershipLostException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new IdempotencyStoreException(claim.operation(), exception);
         }
     }
 

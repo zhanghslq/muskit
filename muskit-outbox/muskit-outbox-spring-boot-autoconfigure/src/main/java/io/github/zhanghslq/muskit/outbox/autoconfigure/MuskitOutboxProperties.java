@@ -20,6 +20,9 @@ public class MuskitOutboxProperties {
     private int batchSize = 100;
     private Duration leaseTime = Duration.ofSeconds(30);
     private Duration retryDelay = Duration.ofSeconds(5);
+    private int maxAttempts = 10;
+    private double retryMultiplier = 2D;
+    private Duration maxRetryDelay = Duration.ofMinutes(5);
     private boolean schedulerEnabled = true;
     private Duration pollInterval = Duration.ofSeconds(1);
     private Duration publishedRetention = Duration.ofDays(7);
@@ -154,6 +157,60 @@ public class MuskitOutboxProperties {
      */
     public void setRetryDelay(Duration retryDelay) {
         this.retryDelay = retryDelay;
+    }
+
+    /**
+     * 返回最大发布尝试次数。
+     *
+     * @return 最大发布尝试次数
+     */
+    public int getMaxAttempts() {
+        return maxAttempts;
+    }
+
+    /**
+     * 设置最大发布尝试次数。
+     *
+     * @param maxAttempts 最大发布尝试次数
+     */
+    public void setMaxAttempts(int maxAttempts) {
+        this.maxAttempts = maxAttempts;
+    }
+
+    /**
+     * 返回重试指数退避倍数。
+     *
+     * @return 退避倍数
+     */
+    public double getRetryMultiplier() {
+        return retryMultiplier;
+    }
+
+    /**
+     * 设置重试指数退避倍数。
+     *
+     * @param retryMultiplier 退避倍数
+     */
+    public void setRetryMultiplier(double retryMultiplier) {
+        this.retryMultiplier = retryMultiplier;
+    }
+
+    /**
+     * 返回最大重试等待时间。
+     *
+     * @return 最大重试等待时间
+     */
+    public Duration getMaxRetryDelay() {
+        return maxRetryDelay;
+    }
+
+    /**
+     * 设置最大重试等待时间。
+     *
+     * @param maxRetryDelay 最大重试等待时间
+     */
+    public void setMaxRetryDelay(Duration maxRetryDelay) {
+        this.maxRetryDelay = maxRetryDelay;
     }
 
     /**

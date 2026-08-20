@@ -3,6 +3,7 @@ package io.github.zhanghslq.muskit.outbox;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Outbox 事务存储和发布租约 SPI。
@@ -43,6 +44,44 @@ public interface OutboxRepository {
      * @param retryDelay 再次发布前的等待时间
      */
     void release(OutboxClaim claim, Duration retryDelay);
+
+    /**
+     * 返回尚未成功发布的事件数量；不支持统计的实现返回负数。
+     *
+     * @return 待发布数量，负数表示 Provider 不支持统计
+     */
+    default long countPending() {
+        return -1L;
+    }
+
+    /**
+     * 仅由当前所有者把事件标记为死信。
+     *
+     * @param claim 发布租约
+     * @param reasonCode 低基数失败原因编码
+     */
+    default void markDead(OutboxClaim claim, String reasonCode) {
+        throw new UnsupportedOperationException("当前 Outbox Provider 不支持死信状态");
+    }
+
+    /**
+     * 将指定死信事件恢复为立即可发布状态。
+     *
+     * @param eventId Outbox 事件标识
+     * @return 是否成功恢复
+     */
+    default boolean replayDead(UUID eventId) {
+        return false;
+    }
+
+    /**
+     * 返回死信事件数量；不支持统计的实现返回负数。
+     *
+     * @return 死信数量
+     */
+    default long countDead() {
+        return -1L;
+    }
 
     /**
      * 删除指定时间之前已经成功发布的历史事件。

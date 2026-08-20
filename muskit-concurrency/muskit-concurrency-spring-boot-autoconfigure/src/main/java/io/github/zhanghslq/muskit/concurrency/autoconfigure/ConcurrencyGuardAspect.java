@@ -1,11 +1,13 @@
 package io.github.zhanghslq.muskit.concurrency.autoconfigure;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyGuard;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyInterruptedException;
@@ -15,6 +17,10 @@ import io.github.zhanghslq.muskit.concurrency.ConcurrencyPolicy;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyPolicyResolver;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyRejectedException;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyRequest;
+import io.github.zhanghslq.muskit.observation.MuskitMetric;
+import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.observation.MuskitTagKey;
+import io.github.zhanghslq.muskit.observation.ObservationTags;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -42,10 +48,12 @@ public final class ConcurrencyGuardAspect implements Ordered {
     private final ConcurrencyLimiter concurrencyLimiter;
     private final ConcurrencyPolicyResolver policyResolver;
     private final BeanFactory beanFactory;
+    private final MuskitObservationRegistry observationRegistry;
     private final int order;
     private final ExpressionParser expressionParser = new SpelExpressionParser();
     private final DefaultParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
     private final ConcurrentMap<String, Expression> expressionCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, AtomicLong> inflight = new ConcurrentHashMap<>();
 
     /**
      * 创建并发控制切面。
@@ -60,9 +68,28 @@ public final class ConcurrencyGuardAspect implements Ordered {
             ConcurrencyPolicyResolver policyResolver,
             BeanFactory beanFactory,
             int order) {
+        this(concurrencyLimiter, policyResolver, beanFactory, order, MuskitObservationRegistry.noop());
+    }
+
+    /**
+     * 创建带统一可观测性的并发控制切面。
+     *
+     * @param concurrencyLimiter 并发额度提供器
+     * @param policyResolver 并发策略解析器
+     * @param beanFactory Spring Bean 工厂
+     * @param order 切面顺序
+     * @param observationRegistry 统一观测注册器
+     */
+    public ConcurrencyGuardAspect(
+            ConcurrencyLimiter concurrencyLimiter,
+            ConcurrencyPolicyResolver policyResolver,
+            BeanFactory beanFactory,
+            int order,
+            MuskitObservationRegistry observationRegistry) {
         this.concurrencyLimiter = Objects.requireNonNull(concurrencyLimiter, "并发额度提供器不能为空");
         this.policyResolver = Objects.requireNonNull(policyResolver, "并发策略解析器不能为空");
         this.beanFactory = Objects.requireNonNull(beanFactory, "BeanFactory 不能为空");
+        this.observationRegistry = Objects.requireNonNull(observationRegistry, "统一观测注册器不能为空");
         this.order = order;
     }
 
@@ -81,7 +108,22 @@ public final class ConcurrencyGuardAspect implements Ordered {
         ConcurrencyGuard guard = resolveGuard(method, invokedMethod, joinPoint.getTarget());
         ConcurrencyPolicy policy = policyResolver.resolve(guard.policy());
         String key = evaluateKey(guard.key(), method, joinPoint.getTarget(), joinPoint.getArgs());
-        ConcurrencyPermit permit = acquire(new ConcurrencyRequest(policy, key));
+        ObservationTags tags = ObservationTags.of(MuskitTagKey.POLICY, policy.name());
+        long acquireStartedAt = System.nanoTime();
+        ConcurrencyPermit permit;
+        try {
+            permit = acquire(new ConcurrencyRequest(policy, key));
+            observationRegistry.recordDuration(
+                    MuskitMetric.CONCURRENCY_ACQUIRE,
+                    Duration.ofNanos(Math.max(0L, System.nanoTime() - acquireStartedAt)),
+                    tags.and(MuskitTagKey.OUTCOME, "acquired"));
+        } catch (RuntimeException failure) {
+            observationRegistry.increment(
+                    MuskitMetric.CONCURRENCY_REJECTED,
+                    tags.and(MuskitTagKey.OUTCOME, "rejected"));
+            throw failure;
+        }
+        adjustInflight(policy.name(), 1L, tags);
 
         boolean closeSynchronously = true;
         try {
@@ -89,13 +131,45 @@ public final class ConcurrencyGuardAspect implements Ordered {
             if (result instanceof CompletionStage<?> completionStage) {
                 // 异步方法返回不代表资源使用结束，额度随异步结果的真实完成信号释放。
                 closeSynchronously = false;
-                return completionStage.whenComplete((ignored, throwable) -> permit.close());
+                return completionStage.whenComplete(
+                        (ignored, throwable) -> closePermit(permit, policy.name(), tags));
             }
             return result;
         } finally {
             if (closeSynchronously) {
-                permit.close();
+                closePermit(permit, policy.name(), tags);
             }
+        }
+    }
+
+    /**
+     * 关闭并发额度并在释放完成后更新在途数量。
+     *
+     * @param permit 并发额度
+     * @param policyName 策略名称
+     * @param tags 指标标签
+     */
+    private void closePermit(ConcurrencyPermit permit, String policyName, ObservationTags tags) {
+        try {
+            permit.close();
+        } finally {
+            adjustInflight(policyName, -1L, tags);
+        }
+    }
+
+    /**
+     * 原子调整策略维度的在途数量并发布仪表值。
+     *
+     * @param policyName 策略名称
+     * @param delta 变化量
+     * @param tags 指标标签
+     */
+    private void adjustInflight(String policyName, long delta, ObservationTags tags) {
+        AtomicLong current = inflight.computeIfAbsent(policyName, ignored -> new AtomicLong());
+        long value = current.updateAndGet(previous -> Math.max(0L, previous + delta));
+        observationRegistry.setGauge(MuskitMetric.CONCURRENCY_INFLIGHT, value, tags);
+        if (value == 0L) {
+            inflight.remove(policyName, current);
         }
     }
 

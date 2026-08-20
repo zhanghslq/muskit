@@ -34,6 +34,52 @@ muskit:
     enabled: true
     provider: redis
     redis-key-prefix: "muskit:idempotency:"
+    lease-renewal-enabled: true
+  observability:
+    enabled: true
+    endpoint-enabled: true
+  lifecycle:
+    shutdown-timeout: 30s
+  executor:
+    executors:
+      default:
+        type: virtual
+        max-concurrency: 100
+        queue-capacity: 200
+        shutdown-timeout: 30s
+  inbox:
+    provider: jdbc
+    initialize-schema: true
+    policies:
+      order-consumer:
+        processing-timeout: 30s
+        retention: 7d
+        max-attempts: 5
+        initial-retry-delay: 1s
+        retry-multiplier: 2
+        max-retry-delay: 5m
+  cache:
+    provider: redis
+    refresh-executor: default
+    policies:
+      product:
+        ttl: 10m
+        null-ttl: 30s
+        ttl-jitter-ratio: 0.1
+        stale-while-revalidate: 1m
+        failure-mode: fail-fast
+  client:
+    outbound-timeout: 3s
+    max-inbound-timeout: 30s
+    operation: remote-http
+    context-headers:
+      tenantId: X-Tenant-Id
+  audit:
+    provider: jdbc
+    table-name: muskit_audit
+    failure-mode: fail-fast
+  state:
+    max-conflict-retries: 3
   resilience:
     rate-limit-enabled: true
     rate-limit-provider: redis
@@ -64,5 +110,8 @@ muskit:
     batch-size: 100
     lease-time: 30s
     retry-delay: 5s
+    max-attempts: 10
+    retry-multiplier: 2
+    max-retry-delay: 5m
     poll-interval: 1s
     published-retention: 7d

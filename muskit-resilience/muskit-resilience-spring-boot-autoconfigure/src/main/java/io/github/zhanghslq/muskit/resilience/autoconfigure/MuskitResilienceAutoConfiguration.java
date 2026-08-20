@@ -1,5 +1,6 @@
 package io.github.zhanghslq.muskit.resilience.autoconfigure;
 
+import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
 import io.github.zhanghslq.muskit.resilience.ratelimit.LocalTokenBucketRateLimiter;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitPolicyResolver;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimiter;
@@ -8,6 +9,7 @@ import io.github.zhanghslq.muskit.resilience.retry.RetryPolicyResolver;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -80,6 +82,7 @@ public class MuskitResilienceAutoConfiguration {
      * @param policyResolver 限流策略解析器
      * @param beanFactory Spring Bean 工厂
      * @param properties 韧性配置属性
+     * @param observationRegistryProvider 统一观测注册器 Provider
      * @return 限流切面
      */
     @Bean
@@ -93,14 +96,20 @@ public class MuskitResilienceAutoConfiguration {
             RateLimiter rateLimiter,
             RateLimitPolicyResolver policyResolver,
             BeanFactory beanFactory,
-            MuskitResilienceProperties properties) {
+            MuskitResilienceProperties properties,
+            ObjectProvider<MuskitObservationRegistry> observationRegistryProvider) {
         return new RateLimitGuardAspect(
-                rateLimiter, policyResolver, beanFactory, properties.getRateLimitOrder());
+                rateLimiter,
+                policyResolver,
+                beanFactory,
+                properties.getRateLimitOrder(),
+                observationRegistryProvider.getIfAvailable(MuskitObservationRegistry::noop));
     }
 
     /**
      * 创建默认 Deadline 感知重试执行器。
      *
+     * @param observationRegistryProvider 统一观测注册器 Provider
      * @return 重试执行器
      */
     @Bean(destroyMethod = "close")
@@ -110,8 +119,10 @@ public class MuskitResilienceAutoConfiguration {
             name = "retry-enabled",
             havingValue = "true",
             matchIfMissing = true)
-    public RetryExecutor muskitRetryExecutor() {
-        return new RetryExecutor();
+    public RetryExecutor muskitRetryExecutor(
+            ObjectProvider<MuskitObservationRegistry> observationRegistryProvider) {
+        return new RetryExecutor(
+                observationRegistryProvider.getIfAvailable(MuskitObservationRegistry::noop));
     }
 
     /**

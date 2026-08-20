@@ -1,5 +1,6 @@
 package io.github.zhanghslq.muskit.idempotency;
 
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -45,6 +46,18 @@ public interface IdempotencyStore {
      */
     default Optional<IdempotencyResult> findCompletedResult(IdempotencyRequest request) {
         return Optional.empty();
+    }
+
+    /**
+     * 仅由当前所有者续期处理中状态。
+     *
+     * <p>自定义 Provider 未实现续期时会明确失败，不会假装续期成功。</p>
+     *
+     * @param claim 幂等所有权声明
+     * @param processingTimeout 从续期时刻开始的新处理超时时间
+     */
+    default void renew(IdempotencyClaim claim, Duration processingTimeout) {
+        throw new IdempotencyOwnershipLostException(claim.operation());
     }
 
     /**

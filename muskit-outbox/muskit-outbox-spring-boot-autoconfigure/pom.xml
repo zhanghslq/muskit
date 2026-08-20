@@ -14,6 +14,11 @@
     <dependencies>
         <dependency>
             <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-observation-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
             <artifactId>muskit-outbox-core</artifactId>
             <version>${project.version}</version>
         </dependency>

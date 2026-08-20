@@ -11,6 +11,7 @@ import io.github.zhanghslq.muskit.lock.DistributedLockUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.redisson.api.RFuture;
+import org.redisson.api.RAtomicLong;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 
@@ -131,6 +132,32 @@ class RedisDistributedLockProviderTest {
         assertThatThrownBy(() -> provider.tryAcquire(request(false, Duration.ZERO)))
                 .isInstanceOf(InterruptedException.class);
         verify(acquireFuture).cancel(true);
+    }
+
+    /**
+     * 验证 fencing 模式返回 Redis 原子递增令牌。
+     *
+     * @throws Exception Redisson 模拟调用失败
+     */
+    @Test
+    void shouldReturnFencingToken() throws Exception {
+        RedissonClient client = mock(RedissonClient.class);
+        RLock lock = mock(RLock.class);
+        RAtomicLong counter = mock(RAtomicLong.class);
+        @SuppressWarnings("unchecked")
+        RFuture<Boolean> acquireFuture = mock(RFuture.class);
+        when(client.getLock("muskit:lock:order-submit:42")).thenReturn(lock);
+        when(client.getAtomicLong("muskit:lock:order-submit:42:fencing")).thenReturn(counter);
+        when(counter.incrementAndGet()).thenReturn(101L);
+        when(lock.tryLockAsync(anyLong(), anyLong(), org.mockito.ArgumentMatchers.eq(TimeUnit.MILLISECONDS), anyLong()))
+                .thenReturn(acquireFuture);
+        when(acquireFuture.get()).thenReturn(true);
+        RedisDistributedLockProvider provider = new RedisDistributedLockProvider(client, "muskit:lock:");
+
+        DistributedLockHandle handle = provider.tryAcquire(new DistributedLockRequest(
+                "order-submit", "42", Duration.ZERO, Duration.ZERO, false, false, true)).orElseThrow();
+
+        assertThat(handle.fencingToken()).hasValue(101L);
     }
 
     /**

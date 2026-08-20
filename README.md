@@ -40,6 +40,20 @@ Muskit 是面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工�
 | `muskit-spring-boot-starter-resilience` | 本地限流、`@RetryGuard` 与 Deadline 协作能力 |
 | `muskit-spring-boot-starter-resilience-redis` | Redis 强依赖的分布式限流 Starter |
 | `muskit-spring-boot-starter-resilience4j` | `@CircuitBreakerGuard` 和 Resilience4j Provider Starter |
+| `muskit-observation-core` | 统一低基数指标目录和可替换观测 SPI |
+| `muskit-observation-micrometer-adapter` | Muskit 指标到 Micrometer 的适配 |
+| `muskit-spring-boot-starter-observability` | 统一指标与 `/actuator/muskit` 能力快照 |
+| `muskit-spring-boot-starter-lifecycle` | Readiness 摘流、HTTP 在途请求统计和有界优雅排空 |
+| `muskit-spring-boot-starter-executor` | 有界平台/虚拟线程执行器、上下文传播和排空治理 |
+| `muskit-inbox-core` | 可靠消费状态机、退避重试、死信和人工回放 SPI |
+| `muskit-spring-boot-starter-inbox-jdbc` | JDBC Inbox 可靠消费 Starter |
+| `muskit-cache-core` | 防击穿、空值缓存、TTL 抖动和 stale-while-revalidate |
+| `muskit-spring-boot-starter-cache-redis` | Redis 强依赖的可靠缓存 Starter |
+| `muskit-spring-boot-starter-client` | RestClient Deadline 与业务上下文白名单传播 |
+| `muskit-audit-core` | 审计注解、程序化 API、Writer 和失败模式 SPI |
+| `muskit-spring-boot-starter-audit-jdbc` | JDBC 审计事件持久化 Starter |
+| `muskit-state-core` | 不可变状态机定义、Guard 和乐观锁仓储执行器 |
+| `muskit-spring-boot-starter-state` | 状态机工厂自动配置 |
 | `muskit-outbox-core` | Transactional Outbox 事件、事务存储和发布 SPI |
 | `muskit-outbox-jdbc-adapter` | 使用条件更新和有期限租约的 JDBC Outbox 存储 |
 | `muskit-outbox-kafka-adapter` | 等待 broker 确认的 Kafka Outbox 发布器 |
@@ -96,8 +110,66 @@ Muskit 是面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工�
         <groupId>io.github.zhanghslq</groupId>
         <artifactId>muskit-spring-boot-starter-outbox</artifactId>
     </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-observability</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-lifecycle</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-executor</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-inbox-jdbc</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-cache-redis</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-client</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-audit-jdbc</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-state</artifactId>
+    </dependency>
 </dependencies>
 ```
+
+这里只用于展示坐标，实际应用应按需引入；特别是 Redis、JDBC、Kafka Starter 不应为了“全家桶”一次性加入。
+
+## 统一可观测性、生命周期和执行器
+
+`muskit-spring-boot-starter-observability` 将锁、幂等、并发、限流、Retry、熔断、Inbox、Outbox、缓存、执行器、客户端和审计统一接入 `MuskitObservationRegistry`。Micrometer 指标只使用 `policy`、`provider`、`operation`、`outcome` 等低基数标签；业务 Key、租户 ID 和消息 ID 不会成为标签。启用 Actuator 暴露后可以访问 `/actuator/muskit` 查看已装配能力，不输出业务键。
+
+```yaml
+muskit:
+  observability:
+    enabled: true
+    endpoint-enabled: true
+  lifecycle:
+    shutdown-timeout: 30s
+    excluded-path-prefixes:
+      - /actuator/health
+  executor:
+    executors:
+      default:
+        type: virtual
+        max-concurrency: 100
+        queue-capacity: 200
+        shutdown-timeout: 30s
+```
+
+Lifecycle 在停止阶段先发布 `ReadinessState.REFUSING_TRAFFIC`，拒绝新的普通 HTTP 请求，再使用同一总超时预算排空在途请求和受管执行器。`ManagedTaskExecutor` 即使使用虚拟线程也会限制最大并发和等待容量，并传播 `MuskitContext` 与 `DeadlineContext`。
 
 ## 业务上下文
 
@@ -220,9 +292,11 @@ muskit:
         leaseTime = 30_000,
         timeUnit = TimeUnit.MILLISECONDS,
         fair = true,
-        localFallback = false)
+        localFallback = false,
+        fencing = true)
 public String submit(String orderId) {
-    return "submitted:" + orderId;
+    long fencingToken = FencingTokenContext.current().orElseThrow();
+    return "submitted:" + orderId + ":token=" + fencingToken;
 }
 ```
 
@@ -230,6 +304,7 @@ public String submit(String orderId) {
 - `leaseTime = -1` 使用 Redisson 看门狗自动续期；正数表示固定租约。
 - `localFallback = false` 是默认值，Redis 异常时保持失败语义。
 - 只有显式设置 `localFallback = true` 才会在 Redis 获取异常时使用本地锁，并输出 WARN，明确提示此时锁仅当前 JVM 生效、跨实例互斥不再保证。其他实例已持有 Redis 锁造成的正常竞争失败不会触发降级。
+- `fencing = true` 时，每次成功获取 Redis 锁都会得到严格递增令牌。业务必须把令牌写入下游资源的条件更新，拒绝小于已见最大值的旧持有者；fencing 模式禁止本地降级，Redis 或令牌计数器不可用时明确失败。
 - 本地降级锁不使用固定租约提前释放，而是在同步方法结束或 `CompletionStage` 真正完成后释放。
 
 锁名称应是稳定的低基数业务名称，业务锁键不会进入公共异常、日志或 `toString()`。每次注解调用使用独立的锁 owner，线程池复用不会被误判为锁重入；同一调用链嵌套获取相同锁也不会按重入处理。当前锁切面与并发切面一样支持同步方法和 `CompletionStage`，不支持 Reactor Publisher。
@@ -251,6 +326,7 @@ muskit:
     enabled: true
     provider: redis
     redis-key-prefix: "muskit:idempotency:"
+    lease-renewal-enabled: true
 ```
 
 JDBC 使用方式：
@@ -274,6 +350,89 @@ public CompletionStage<Order> create(OrderRequest request) {
 ```
 
 重复处理中调用抛出 `IdempotencyInProgressException`，已经成功的重复调用抛出 `IdempotencyCompletedException`。业务幂等键和所有权令牌不会进入公共异常或 `toString()`；Redis Key 使用业务键 SHA-256 摘要。
+
+长任务可以显式开启 `lease-renewal-enabled`。Redis 和 JDBC Provider 都会在校验所有权后原子续期；续期失败会在业务完成时明确报告，默认保持关闭以兼容未实现 `renew` 的自定义 Provider。除注解外，`IdempotencyTemplate.execute(...)` 以明确的 `businessId` 执行单条业务，`executeBatch(...)` 会逐项获取所有权，并返回不包含业务 ID 的完成、重复和处理中数量汇总。
+
+## Reliable Inbox
+
+`muskit-spring-boot-starter-inbox-jdbc` 用业务消息 ID 驱动 `PROCESSING / RETRY_WAIT / SUCCEEDED / DEAD` 状态机，处理失败时指数退避，达到最大次数进入死信，支持人工回放：
+
+```yaml
+muskit:
+  inbox:
+    provider: jdbc
+    table-name: muskit_inbox
+    initialize-schema: false
+    policies:
+      order-consumer:
+        processing-timeout: 30s
+        retention: 7d
+        max-attempts: 5
+        initial-retry-delay: 1s
+        retry-multiplier: 2
+        max-retry-delay: 5m
+```
+
+```java
+InboxProcessResult result = inboxTemplate.process(
+        "order-consumer", messageId, "order-consumer", () -> handle(message));
+```
+
+业务消息 ID 只用于存储条件，不进入指标、公共异常或安全描述。消息处于重试等待、处理中冲突、完成和死信时都有明确结果，不会把毒消息无限快速重试。
+
+## 可靠缓存
+
+`muskit-spring-boot-starter-cache-redis` 提供进程内 SingleFlight 防击穿、独立空值 TTL 防穿透、TTL 抖动防雪崩，以及可选 stale-while-revalidate：
+
+```yaml
+muskit:
+  cache:
+    provider: redis
+    key-prefix: "muskit:cache"
+    refresh-executor: default
+    policies:
+      product:
+        ttl: 10m
+        null-ttl: 30s
+        ttl-jitter-ratio: 0.1
+        stale-while-revalidate: 1m
+        failure-mode: fail-fast
+```
+
+默认 Redis 异常直接失败。只有显式选择 `load-without-cache` 才允许绕过缓存加载数据；删除缓存始终失败即报错，避免把失效失败伪装成成功。业务 Key 以 SHA-256 摘要进入 Redis Key。
+
+## HTTP 客户端调用链治理
+
+`muskit-spring-boot-starter-client` 自动定制 Spring `RestClient.Builder`，覆盖写入绝对 Deadline 请求头，并只传播配置白名单内的 `MuskitContext`：
+
+```yaml
+muskit:
+  client:
+    outbound-timeout: 3s
+    max-inbound-timeout: 30s
+    operation: remote-http
+    context-headers:
+      tenantId: X-Tenant-Id
+      operatorId: X-Operator-Id
+```
+
+子调用 Deadline 只能缩短，不能延长父预算；非法、过期或包含请求头注入字符的传播值会被拒绝。Servlet 入站过滤器在请求结束后恢复原线程状态，客户端指标不会使用 URL 或业务 ID 作为标签。
+
+## 审计与状态机
+
+JDBC 审计支持程序化 `AuditRecorder` 和 `@Audited(action = "order.cancel")`。注解不自动序列化方法参数，避免敏感参数意外入库；程序化 API 可显式传入主体与扩展属性。默认 `FAIL_FAST`，只有配置 `BEST_EFFORT` 才允许业务继续，同时记录 `dropped` 指标并输出 WARN。
+
+```yaml
+muskit:
+  audit:
+    provider: jdbc
+    table-name: muskit_audit
+    failure-mode: fail-fast
+  state:
+    max-conflict-retries: 3
+```
+
+`StateMachineDefinition` 保证同一“来源状态 + 事件”只有一条规则，Guard 拒绝、无规则和成功迁移返回不同状态。`PersistentStateMachine` 通过业务提供的 `StateRepository.compareAndSet(...)` 原子提交，并在冲突后重新读取最新状态；实体 ID 不进入冲突异常。
 
 ### Kafka、RabbitMQ 和 HTTP
 
@@ -413,6 +572,9 @@ muskit:
     batch-size: 100
     lease-time: 30s
     retry-delay: 5s
+    max-attempts: 10
+    retry-multiplier: 2
+    max-retry-delay: 5m
     poll-interval: 1s
     published-retention: 7d
 ```
@@ -429,7 +591,7 @@ public UUID createOrder(Order order) {
 }
 ```
 
-默认 `require-transaction=true`，脱离活动数据库事务写入会明确失败。JDBC Store 通过条件更新竞争有期限租约，Kafka Publisher 等待 broker 确认后才标记 `PUBLISHED`；若 Kafka 已成功而数据库确认失败，事件会再次投递，因此消费者仍必须幂等。生产环境应通过 Flyway/Liquibase 创建表并关闭 `initialize-schema`；自动建表只适合本地开发与测试。轮询器可用 `scheduler-enabled=false` 关闭，随后由应用自行调用 `OutboxDispatchService.dispatchBatch()`。
+默认 `require-transaction=true`，脱离活动数据库事务写入会明确失败。JDBC Store 通过条件更新竞争有期限租约，同一 `partitionKey` 严格按创建顺序发布；Kafka Publisher 等待 broker 确认后才标记 `PUBLISHED`。失败使用有上限指数退避，耗尽后进入 `DEAD` 并通知可替换 `OutboxDeadLetterSink`，人工修复后可调用 `replayDead(...)`。DEAD 事件会阻塞同一分区后续事件，避免悄悄破坏聚合顺序。若 Kafka 已成功而数据库确认失败，事件会再次投递，因此消费者仍必须幂等。生产环境应通过 Flyway/Liquibase 创建表并关闭 `initialize-schema`；自动建表只适合本地开发与测试。轮询器可用 `scheduler-enabled=false` 关闭，随后由应用自行调用 `OutboxDispatchService.dispatchBatch()`。
 
 ## 构建
 
@@ -456,6 +618,8 @@ public UUID createOrder(Order order) {
 - `0.4.x`：RabbitMQ、HTTP 幂等、Redis 分布式并发控制
 - `0.5.x`：令牌桶限流、SingleFlight、Deadline
 - `0.6.x`：Redis 分布式限流、HTTP 响应回放、Retry、Circuit Breaker、Transactional Outbox
+- `0.7.x`：统一可观测性、生命周期、受管执行器、Reliable Inbox
+- `0.8.x`：可靠缓存、HTTP 客户端治理、审计、状态机、fencing token 与可靠性增强
 
 ## 发布到 Maven Central
 

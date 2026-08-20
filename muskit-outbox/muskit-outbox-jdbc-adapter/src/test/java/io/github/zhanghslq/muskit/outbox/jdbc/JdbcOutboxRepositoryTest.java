@@ -116,6 +116,43 @@ class JdbcOutboxRepositoryTest {
     }
 
     /**
+     * 验证相同聚合键的后一事件会等待前一事件成功发布。
+     */
+    @Test
+    void shouldPreserveOrderingWithinPartitionKey() {
+        JdbcOutboxRepository repository = repositoryAt(INITIAL_TIME, true);
+        repository.initializeSchema();
+        transactionTemplate.executeWithoutResult(status -> {
+            repository.append(event());
+            repository.append(event());
+        });
+
+        List<OutboxClaim> firstBatch = repository.claimBatch("owner-a", 10, Duration.ofSeconds(30));
+
+        assertThat(firstBatch).hasSize(1);
+        repository.markPublished(firstBatch.getFirst());
+        assertThat(repository.claimBatch("owner-b", 10, Duration.ofSeconds(30))).hasSize(1);
+    }
+
+    /**
+     * 验证死信统计和人工回放会重置发布尝试次数。
+     */
+    @Test
+    void shouldMarkDeadAndReplayManually() {
+        JdbcOutboxRepository repository = repositoryAt(INITIAL_TIME, true);
+        repository.initializeSchema();
+        OutboxEvent event = event();
+        transactionTemplate.executeWithoutResult(status -> repository.append(event));
+        OutboxClaim claim = repository.claimBatch("owner-a", 1, Duration.ofSeconds(30)).getFirst();
+        repository.markDead(claim, "publish-failure");
+
+        assertThat(repository.countDead()).isEqualTo(1L);
+        assertThat(repository.replayDead(event.id())).isTrue();
+        assertThat(repository.claimBatch("owner-b", 1, Duration.ofSeconds(30)).getFirst().attempt())
+                .isEqualTo(1);
+    }
+
+    /**
      * 创建使用固定时钟的 JDBC Outbox 存储。
      *
      * @param instant 当前时间

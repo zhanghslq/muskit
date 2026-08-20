@@ -1,9 +1,13 @@
 package io.github.zhanghslq.muskit.outbox.autoconfigure;
 
 import io.github.zhanghslq.muskit.outbox.OutboxDispatchService;
+import io.github.zhanghslq.muskit.outbox.OutboxDeadLetterSink;
 import io.github.zhanghslq.muskit.outbox.OutboxPublisher;
 import io.github.zhanghslq.muskit.outbox.OutboxRepository;
+import io.github.zhanghslq.muskit.outbox.OutboxRetryPolicy;
 import io.github.zhanghslq.muskit.outbox.OutboxService;
+import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -50,6 +54,8 @@ public class MuskitOutboxAutoConfiguration {
      * @param repository Outbox 存储
      * @param publisher Outbox 发布器
      * @param properties Outbox 配置属性
+     * @param observationRegistryProvider 统一观测注册器 Provider
+     * @param deadLetterSinkProvider 外部死信通知 Provider
      * @return Outbox 批量发布服务
      */
     @Bean
@@ -57,13 +63,21 @@ public class MuskitOutboxAutoConfiguration {
     public OutboxDispatchService muskitOutboxDispatchService(
             OutboxRepository repository,
             OutboxPublisher publisher,
-            MuskitOutboxProperties properties) {
+            MuskitOutboxProperties properties,
+            ObjectProvider<MuskitObservationRegistry> observationRegistryProvider,
+            ObjectProvider<OutboxDeadLetterSink> deadLetterSinkProvider) {
         return new OutboxDispatchService(
                 repository,
                 publisher,
                 properties.getBatchSize(),
                 properties.getLeaseTime(),
-                properties.getRetryDelay());
+                new OutboxRetryPolicy(
+                        properties.getMaxAttempts(),
+                        properties.getRetryDelay(),
+                        properties.getRetryMultiplier(),
+                        properties.getMaxRetryDelay()),
+                observationRegistryProvider.getIfAvailable(MuskitObservationRegistry::noop),
+                deadLetterSinkProvider.getIfAvailable(OutboxDeadLetterSink::noop));
     }
 
     /**

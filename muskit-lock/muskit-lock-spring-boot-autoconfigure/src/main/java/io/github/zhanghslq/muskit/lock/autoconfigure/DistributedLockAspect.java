@@ -14,6 +14,8 @@ import io.github.zhanghslq.muskit.lock.DistributedLockInterruptedException;
 import io.github.zhanghslq.muskit.lock.DistributedLockProvider;
 import io.github.zhanghslq.muskit.lock.DistributedLockRejectedException;
 import io.github.zhanghslq.muskit.lock.DistributedLockRequest;
+import io.github.zhanghslq.muskit.lock.FencingTokenContext;
+import io.github.zhanghslq.muskit.lock.FencingTokenUnavailableException;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -80,6 +82,7 @@ public final class DistributedLockAspect implements Ordered {
         DistributedLock annotation = resolveAnnotation(method, invokedMethod, joinPoint.getTarget());
         String key = evaluateKey(annotation.key(), method, joinPoint.getTarget(), joinPoint.getArgs());
         DistributedLockHandle handle = acquire(toRequest(annotation, key));
+        FencingTokenContext.Scope fencingScope = openFencingScope(annotation, handle);
 
         boolean closeSynchronously = true;
         Throwable invocationFailure = null;
@@ -95,8 +98,14 @@ public final class DistributedLockAspect implements Ordered {
             invocationFailure = throwable;
             throw throwable;
         } finally {
-            if (closeSynchronously) {
-                close(handle, invocationFailure);
+            try {
+                if (fencingScope != null) {
+                    fencingScope.close();
+                }
+            } finally {
+                if (closeSynchronously) {
+                    close(handle, invocationFailure);
+                }
             }
         }
     }
@@ -165,7 +174,28 @@ public final class DistributedLockAspect implements Ordered {
                 ? Duration.ZERO
                 : Duration.of(annotation.leaseTime(), annotation.timeUnit().toChronoUnit());
         return new DistributedLockRequest(
-                annotation.name(), key, waitTime, leaseTime, annotation.fair(), annotation.localFallback());
+                annotation.name(), key, waitTime, leaseTime, annotation.fair(),
+                annotation.localFallback(), annotation.fencing());
+    }
+
+    /**
+     * 在注解要求 fencing 时打开令牌作用域，Provider 语义不完整时先释放锁并失败。
+     *
+     * @param annotation 分布式锁注解
+     * @param handle 已获取锁句柄
+     * @return fencing token 作用域，未启用时为空
+     */
+    private FencingTokenContext.Scope openFencingScope(
+            DistributedLock annotation,
+            DistributedLockHandle handle) {
+        if (!annotation.fencing()) {
+            return null;
+        }
+        if (handle.fencingToken().isEmpty()) {
+            handle.close();
+            throw new FencingTokenUnavailableException(annotation.name());
+        }
+        return FencingTokenContext.open(handle.fencingToken().orElseThrow());
     }
 
     /**

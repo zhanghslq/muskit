@@ -3,6 +3,7 @@ package io.github.zhanghslq.muskit.lock.autoconfigure;
 import io.github.zhanghslq.muskit.lock.DistributedLockProvider;
 import io.github.zhanghslq.muskit.lock.LocalDistributedLockProvider;
 import io.github.zhanghslq.muskit.lock.redis.RedisDistributedLockProvider;
+import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;
@@ -40,11 +41,18 @@ public class MuskitLockAutoConfiguration {
      * 创建锁指标记录器；应用没有 MeterRegistry 时使用空实现。
      *
      * @param meterRegistries 应用中的指标注册表
+     * @param observationRegistries Muskit 统一观测注册器
      * @return 锁指标记录器
      */
     @Bean
     @ConditionalOnMissingBean
-    LockObservation muskitLockObservation(ObjectProvider<MeterRegistry> meterRegistries) {
+    LockObservation muskitLockObservation(
+            ObjectProvider<MeterRegistry> meterRegistries,
+            ObjectProvider<MuskitObservationRegistry> observationRegistries) {
+        MuskitObservationRegistry observationRegistry = observationRegistries.getIfAvailable();
+        if (observationRegistry != null) {
+            return new UnifiedLockObservation(observationRegistry);
+        }
         MeterRegistry meterRegistry = meterRegistries.orderedStream().findFirst().orElse(null);
         return meterRegistry == null
                 ? new NoOpLockObservation()

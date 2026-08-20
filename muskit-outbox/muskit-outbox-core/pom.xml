@@ -13,6 +13,11 @@
     <name>Muskit Outbox Core</name>
     <dependencies>
         <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-observation-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>

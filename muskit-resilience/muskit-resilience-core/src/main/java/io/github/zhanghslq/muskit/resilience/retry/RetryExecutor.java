@@ -15,6 +15,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.DoubleSupplier;
 
+import io.github.zhanghslq.muskit.observation.MuskitMetric;
+import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.observation.MuskitTagKey;
+import io.github.zhanghslq.muskit.observation.ObservationTags;
 import io.github.zhanghslq.muskit.resilience.deadline.Deadline;
 import io.github.zhanghslq.muskit.resilience.deadline.DeadlineContext;
 import io.github.zhanghslq.muskit.resilience.deadline.DeadlineExceededException;
@@ -30,20 +34,27 @@ public final class RetryExecutor implements AutoCloseable {
     private final ScheduledExecutorService scheduler;
     private final DoubleSupplier random;
     private final boolean ownsScheduler;
+    private final MuskitObservationRegistry observationRegistry;
     private final AtomicBoolean closed = new AtomicBoolean();
 
     /**
      * 使用单个守护调度线程和线程局部随机数创建重试器。
      */
     public RetryExecutor() {
+        this(MuskitObservationRegistry.noop());
+    }
+
+    /**
+     * 使用单个守护调度线程创建带统一可观测性的重试器。
+     *
+     * @param observationRegistry 统一观测注册器
+     */
+    public RetryExecutor(MuskitObservationRegistry observationRegistry) {
         this(
-                Executors.newSingleThreadScheduledExecutor(task -> {
-                    Thread thread = new Thread(task, "muskit-retry-scheduler");
-                    thread.setDaemon(true);
-                    return thread;
-                }),
+                createDefaultScheduler(),
                 () -> ThreadLocalRandom.current().nextDouble(),
-                true);
+                true,
+                observationRegistry);
     }
 
     /**
@@ -53,7 +64,21 @@ public final class RetryExecutor implements AutoCloseable {
      * @param random 返回零到一之间数值的随机数源
      */
     public RetryExecutor(ScheduledExecutorService scheduler, DoubleSupplier random) {
-        this(scheduler, random, false);
+        this(scheduler, random, false, MuskitObservationRegistry.noop());
+    }
+
+    /**
+     * 使用指定调度器、随机源和统一观测注册器创建重试器。
+     *
+     * @param scheduler 异步退避调度器
+     * @param random 返回零到一之间数值的随机数源
+     * @param observationRegistry 统一观测注册器
+     */
+    public RetryExecutor(
+            ScheduledExecutorService scheduler,
+            DoubleSupplier random,
+            MuskitObservationRegistry observationRegistry) {
+        this(scheduler, random, false, observationRegistry);
     }
 
     /**
@@ -62,14 +87,17 @@ public final class RetryExecutor implements AutoCloseable {
      * @param scheduler 异步退避调度器
      * @param random 随机数源
      * @param ownsScheduler 关闭时是否关闭调度器
+     * @param observationRegistry 统一观测注册器
      */
     private RetryExecutor(
             ScheduledExecutorService scheduler,
             DoubleSupplier random,
-            boolean ownsScheduler) {
+            boolean ownsScheduler,
+            MuskitObservationRegistry observationRegistry) {
         this.scheduler = Objects.requireNonNull(scheduler, "重试调度器不能为空");
         this.random = Objects.requireNonNull(random, "重试随机数源不能为空");
         this.ownsScheduler = ownsScheduler;
+        this.observationRegistry = Objects.requireNonNull(observationRegistry, "统一观测注册器不能为空");
     }
 
     /**
@@ -87,10 +115,15 @@ public final class RetryExecutor implements AutoCloseable {
         ensureOpen();
         for (int attempt = 1; ; attempt++) {
             DeadlineContext.check();
+            recordAttempt(policy);
             try {
                 return invocation.invoke();
             } catch (Throwable failure) {
-                if (attempt >= policy.maxAttempts() || !policy.shouldRetry(failure)) {
+                boolean retryable = policy.shouldRetry(failure);
+                if (attempt >= policy.maxAttempts() || !retryable) {
+                    if (attempt >= policy.maxAttempts() && retryable) {
+                        recordExhausted(policy);
+                    }
                     throw failure;
                 }
                 Duration delay = delayBeforeAttempt(policy, attempt + 1);
@@ -137,6 +170,43 @@ public final class RetryExecutor implements AutoCloseable {
         if (closed.get()) {
             throw new IllegalStateException("重试器已经关闭");
         }
+    }
+
+    /**
+     * 创建默认的单线程守护调度器。
+     *
+     * @return 重试退避调度器
+     */
+    private static ScheduledExecutorService createDefaultScheduler() {
+        return Executors.newSingleThreadScheduledExecutor(task -> {
+            Thread thread = new Thread(task, "muskit-retry-scheduler");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    /**
+     * 记录一次真实业务调用尝试。
+     *
+     * @param policy 重试策略
+     */
+    private void recordAttempt(RetryPolicy policy) {
+        observationRegistry.increment(
+                MuskitMetric.RETRY_ATTEMPT,
+                ObservationTags.of(MuskitTagKey.POLICY, policy.name())
+                        .and(MuskitTagKey.OUTCOME, "started"));
+    }
+
+    /**
+     * 记录达到最大尝试次数仍失败的调用。
+     *
+     * @param policy 重试策略
+     */
+    private void recordExhausted(RetryPolicy policy) {
+        observationRegistry.increment(
+                MuskitMetric.RETRY_EXHAUSTED,
+                ObservationTags.of(MuskitTagKey.POLICY, policy.name())
+                        .and(MuskitTagKey.OUTCOME, "exhausted"));
     }
 
     /**
@@ -275,6 +345,7 @@ public final class RetryExecutor implements AutoCloseable {
                 if (deadline != null && deadline.isExpired()) {
                     throw new DeadlineExceededException();
                 }
+                recordAttempt(policy);
                 CompletionStage<T> stage;
                 if (deadline == null) {
                     stage = invocation.invoke();
@@ -306,7 +377,11 @@ public final class RetryExecutor implements AutoCloseable {
             if (result.isDone()) {
                 return;
             }
-            if (attempt >= policy.maxAttempts() || !policy.shouldRetry(failure)) {
+            boolean retryable = policy.shouldRetry(failure);
+            if (attempt >= policy.maxAttempts() || !retryable) {
+                if (attempt >= policy.maxAttempts() && retryable) {
+                    recordExhausted(policy);
+                }
                 result.completeExceptionally(failure);
                 return;
             }

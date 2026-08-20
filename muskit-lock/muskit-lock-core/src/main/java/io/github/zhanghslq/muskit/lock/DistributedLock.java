@@ -66,4 +66,14 @@ public @interface DistributedLock {
      * @return 是否允许本地锁降级
      */
     boolean localFallback() default false;
+
+    /**
+     * 返回是否要求 Redis 生成严格递增的 fencing token。
+     *
+     * <p>启用后 Redis 不可用时禁止降级为本地锁，业务可通过
+     * {@link FencingTokenContext#current()} 获取令牌。</p>
+     *
+     * @return 是否启用 fencing token
+     */
+    boolean fencing() default false;
 }

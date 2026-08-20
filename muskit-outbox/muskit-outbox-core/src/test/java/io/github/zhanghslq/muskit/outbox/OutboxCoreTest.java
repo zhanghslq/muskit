@@ -94,6 +94,30 @@ class OutboxCoreTest {
     }
 
     /**
+     * 验证达到最大尝试次数后进入死信并调用外部死信通知。
+     */
+    @Test
+    void shouldMarkDeadAfterMaxAttempts() {
+        InMemoryRepository repository = new InMemoryRepository();
+        repository.events.add(event("failure"));
+        List<OutboxClaim> notified = new ArrayList<>();
+        OutboxDispatchService dispatcher = new OutboxDispatchService(
+                repository,
+                event -> { throw new IllegalStateException("broker unavailable"); },
+                10,
+                Duration.ofSeconds(30),
+                new OutboxRetryPolicy(1, Duration.ofSeconds(1), 2D, Duration.ofSeconds(10)),
+                io.github.zhanghslq.muskit.observation.MuskitObservationRegistry.noop(),
+                notified::add);
+
+        OutboxDispatchReport report = dispatcher.dispatchBatch();
+
+        assertThat(report).isEqualTo(new OutboxDispatchReport(1, 0, 1, 1));
+        assertThat(repository.dead).hasSize(1);
+        assertThat(notified).hasSize(1);
+    }
+
+    /**
      * 创建测试 Outbox 事件。
      *
      * @param destination 消息目的地
@@ -120,6 +144,7 @@ class OutboxCoreTest {
         private final List<OutboxEvent> events = new ArrayList<>();
         private final List<OutboxClaim> published = new ArrayList<>();
         private final List<OutboxClaim> released = new ArrayList<>();
+        private final List<OutboxClaim> dead = new ArrayList<>();
 
         /**
          * 创建内存测试存储。
@@ -172,6 +197,17 @@ class OutboxCoreTest {
         @Override
         public void release(OutboxClaim claim, Duration retryDelay) {
             released.add(claim);
+        }
+
+        /**
+         * 记录进入死信的测试租约。
+         *
+         * @param claim 发布租约
+         * @param reasonCode 失败原因编码
+         */
+        @Override
+        public void markDead(OutboxClaim claim, String reasonCode) {
+            dead.add(claim);
         }
 
         /**

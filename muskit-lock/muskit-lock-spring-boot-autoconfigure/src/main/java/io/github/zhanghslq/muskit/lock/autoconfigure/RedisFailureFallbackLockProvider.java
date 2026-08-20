@@ -7,6 +7,7 @@ import io.github.zhanghslq.muskit.lock.DistributedLockHandle;
 import io.github.zhanghslq.muskit.lock.DistributedLockProvider;
 import io.github.zhanghslq.muskit.lock.DistributedLockRequest;
 import io.github.zhanghslq.muskit.lock.DistributedLockUnavailableException;
+import io.github.zhanghslq.muskit.lock.FencingTokenUnavailableException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -54,6 +55,10 @@ final class RedisFailureFallbackLockProvider implements DistributedLockProvider 
         } catch (DistributedLockUnavailableException exception) {
             if (!request.localFallback()) {
                 throw exception;
+            }
+            if (request.fencing()) {
+                LOGGER.warn("Redis 分布式锁不可用，fencing 模式禁止降级为本地锁，lock=" + request.name());
+                throw new FencingTokenUnavailableException(request.name(), exception);
             }
             LOGGER.warn("Redis 分布式锁不可用，已降级为仅当前 JVM 生效的本地锁，"
                     + "跨实例互斥不再保证，lock=" + request.name());

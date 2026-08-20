@@ -18,6 +18,7 @@ public class MuskitIdempotencyProperties {
     private String redisKeyPrefix = "muskit:idempotency:";
     private String jdbcTableName = "muskit_idempotency";
     private boolean initializeSchema;
+    private boolean leaseRenewalEnabled;
 
     /**
      * 创建 Muskit 幂等配置属性。
@@ -131,5 +132,23 @@ public class MuskitIdempotencyProperties {
      */
     public void setInitializeSchema(boolean initializeSchema) {
         this.initializeSchema = initializeSchema;
+    }
+
+    /**
+     * 返回是否全局启用处理中状态自动续期。
+     *
+     * @return 是否启用自动续期
+     */
+    public boolean isLeaseRenewalEnabled() {
+        return leaseRenewalEnabled;
+    }
+
+    /**
+     * 设置是否全局启用处理中状态自动续期。
+     *
+     * @param leaseRenewalEnabled 是否启用自动续期
+     */
+    public void setLeaseRenewalEnabled(boolean leaseRenewalEnabled) {
+        this.leaseRenewalEnabled = leaseRenewalEnabled;
     }
 }

@@ -102,6 +102,35 @@
         <module>muskit-resilience/muskit-spring-boot-starter-resilience</module>
         <module>muskit-resilience/muskit-spring-boot-starter-resilience-redis</module>
         <module>muskit-resilience/muskit-spring-boot-starter-resilience4j</module>
+        <module>muskit-observation/muskit-observation-core</module>
+        <module>muskit-observation/muskit-observation-micrometer-adapter</module>
+        <module>muskit-observation/muskit-observation-spring-boot-autoconfigure</module>
+        <module>muskit-observation/muskit-spring-boot-starter-observability</module>
+        <module>muskit-lifecycle/muskit-lifecycle-core</module>
+        <module>muskit-lifecycle/muskit-lifecycle-spring-boot-autoconfigure</module>
+        <module>muskit-lifecycle/muskit-spring-boot-starter-lifecycle</module>
+        <module>muskit-executor/muskit-executor-core</module>
+        <module>muskit-executor/muskit-executor-spring-boot-autoconfigure</module>
+        <module>muskit-executor/muskit-spring-boot-starter-executor</module>
+        <module>muskit-inbox/muskit-inbox-core</module>
+        <module>muskit-inbox/muskit-inbox-jdbc-adapter</module>
+        <module>muskit-inbox/muskit-inbox-spring-boot-autoconfigure</module>
+        <module>muskit-inbox/muskit-spring-boot-starter-inbox-jdbc</module>
+        <module>muskit-cache/muskit-cache-core</module>
+        <module>muskit-cache/muskit-cache-redis-adapter</module>
+        <module>muskit-cache/muskit-cache-spring-boot-autoconfigure</module>
+        <module>muskit-cache/muskit-spring-boot-starter-cache-redis</module>
+        <module>muskit-client/muskit-client-core</module>
+        <module>muskit-client/muskit-client-spring-adapter</module>
+        <module>muskit-client/muskit-client-spring-boot-autoconfigure</module>
+        <module>muskit-client/muskit-spring-boot-starter-client</module>
+        <module>muskit-audit/muskit-audit-core</module>
+        <module>muskit-audit/muskit-audit-jdbc-adapter</module>
+        <module>muskit-audit/muskit-audit-spring-boot-autoconfigure</module>
+        <module>muskit-audit/muskit-spring-boot-starter-audit-jdbc</module>
+        <module>muskit-state/muskit-state-core</module>
+        <module>muskit-state/muskit-state-spring-boot-autoconfigure</module>
+        <module>muskit-state/muskit-spring-boot-starter-state</module>
         <module>muskit-outbox/muskit-outbox-core</module>
         <module>muskit-outbox/muskit-outbox-jdbc-adapter</module>
         <module>muskit-outbox/muskit-outbox-kafka-adapter</module>

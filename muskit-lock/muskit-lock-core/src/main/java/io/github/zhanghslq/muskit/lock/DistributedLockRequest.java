@@ -12,6 +12,7 @@ import java.util.Objects;
  * @param leaseTime 固定租约时间，零表示自动续期
  * @param fair 是否公平获取
  * @param localFallback Redis 异常时是否允许本地锁降级
+ * @param fencing 是否要求严格递增的 fencing token
  * @author zhs
  * @since 2026-08-20
  */
@@ -21,7 +22,28 @@ public record DistributedLockRequest(
         Duration waitTime,
         Duration leaseTime,
         boolean fair,
-        boolean localFallback) {
+        boolean localFallback,
+        boolean fencing) {
+
+    /**
+     * 使用兼容参数创建不要求 fencing token 的锁请求。
+     *
+     * @param name 低基数锁名称
+     * @param key 业务锁键
+     * @param waitTime 最长等待时间
+     * @param leaseTime 固定租约时间
+     * @param fair 是否公平获取
+     * @param localFallback 是否允许本地降级
+     */
+    public DistributedLockRequest(
+            String name,
+            String key,
+            Duration waitTime,
+            Duration leaseTime,
+            boolean fair,
+            boolean localFallback) {
+        this(name, key, waitTime, leaseTime, fair, localFallback, false);
+    }
 
     /**
      * 校验并创建锁请求。
@@ -54,6 +76,7 @@ public record DistributedLockRequest(
                 + ", waitTime=" + waitTime
                 + ", leaseTime=" + leaseTime
                 + ", fair=" + fair
-                + ", localFallback=" + localFallback + "]";
+                + ", localFallback=" + localFallback
+                + ", fencing=" + fencing + "]";
     }
 }

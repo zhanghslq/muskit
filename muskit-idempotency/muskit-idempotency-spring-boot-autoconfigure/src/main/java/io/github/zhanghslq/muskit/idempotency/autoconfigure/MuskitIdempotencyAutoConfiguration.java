@@ -1,15 +1,21 @@
 package io.github.zhanghslq.muskit.idempotency.autoconfigure;
 
 import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyTemplate;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 /**
  * Muskit 幂等切面自动配置。
@@ -38,6 +44,8 @@ public class MuskitIdempotencyAutoConfiguration {
      * @param store 幂等状态存储
      * @param beanFactory Spring Bean 工厂
      * @param properties 幂等配置属性
+     * @param observationRegistryProvider 统一观测注册器 Provider
+     * @param renewalSchedulerProvider lease 续期调度器 Provider
      * @return 幂等切面
      */
     @Bean
@@ -45,7 +53,46 @@ public class MuskitIdempotencyAutoConfiguration {
     public IdempotentAspect muskitIdempotentAspect(
             IdempotencyStore store,
             BeanFactory beanFactory,
-            MuskitIdempotencyProperties properties) {
-        return new IdempotentAspect(store, beanFactory, properties.getOrder());
+            MuskitIdempotencyProperties properties,
+            ObjectProvider<MuskitObservationRegistry> observationRegistryProvider,
+            @Qualifier("muskitIdempotencyLeaseScheduler")
+            ObjectProvider<ScheduledExecutorService> renewalSchedulerProvider) {
+        return new IdempotentAspect(
+                store,
+                beanFactory,
+                properties.getOrder(),
+                observationRegistryProvider.getIfAvailable(MuskitObservationRegistry::noop),
+                renewalSchedulerProvider.getIfAvailable(),
+                properties.isLeaseRenewalEnabled());
+    }
+
+    /**
+     * 创建程序化业务 ID 幂等模板。
+     *
+     * @param store 幂等状态存储
+     * @return 幂等模板
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public IdempotencyTemplate muskitIdempotencyTemplate(IdempotencyStore store) {
+        return new IdempotencyTemplate(store);
+    }
+
+    /**
+     * 创建单线程守护型幂等 lease 续期执行器。
+     *
+     * @return lease 续期执行器
+     */
+    @Bean(name = "muskitIdempotencyLeaseScheduler", destroyMethod = "shutdown")
+    @ConditionalOnMissingBean(name = "muskitIdempotencyLeaseScheduler")
+    @ConditionalOnProperty(
+            prefix = "muskit.idempotency",
+            name = "lease-renewal-enabled",
+            havingValue = "true")
+    public ScheduledExecutorService muskitIdempotencyLeaseScheduler() {
+        return Executors.newSingleThreadScheduledExecutor(task -> Thread.ofPlatform()
+                .daemon()
+                .name("muskit-idempotency-renewal")
+                .unstarted(task));
     }
 }

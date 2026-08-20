@@ -1,0 +1,3 @@
+io.github.zhanghslq.muskit.client.autoconfigure.MuskitClientAutoConfiguration
+io.github.zhanghslq.muskit.client.autoconfigure.MuskitRestClientAutoConfiguration
+io.github.zhanghslq.muskit.client.autoconfigure.MuskitClientServletAutoConfiguration

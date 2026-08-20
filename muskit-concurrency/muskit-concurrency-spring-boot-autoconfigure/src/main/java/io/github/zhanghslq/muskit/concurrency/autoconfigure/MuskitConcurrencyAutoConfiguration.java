@@ -3,9 +3,11 @@ package io.github.zhanghslq.muskit.concurrency.autoconfigure;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyLimiter;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyPolicyResolver;
 import io.github.zhanghslq.muskit.concurrency.LocalConcurrencyLimiter;
+import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -66,6 +68,7 @@ public class MuskitConcurrencyAutoConfiguration {
      * @param policyResolver 并发策略解析器
      * @param beanFactory Spring Bean 工厂
      * @param properties 并发控制配置属性
+     * @param observationRegistryProvider 统一观测注册器 Provider
      * @return 并发控制切面
      */
     @Bean
@@ -74,11 +77,13 @@ public class MuskitConcurrencyAutoConfiguration {
             ConcurrencyLimiter concurrencyLimiter,
             ConcurrencyPolicyResolver policyResolver,
             BeanFactory beanFactory,
-            MuskitConcurrencyProperties properties) {
+            MuskitConcurrencyProperties properties,
+            ObjectProvider<MuskitObservationRegistry> observationRegistryProvider) {
         return new ConcurrencyGuardAspect(
                 concurrencyLimiter,
                 policyResolver,
                 beanFactory,
-                properties.getOrder());
+                properties.getOrder(),
+                observationRegistryProvider.getIfAvailable(MuskitObservationRegistry::noop));
     }
 }

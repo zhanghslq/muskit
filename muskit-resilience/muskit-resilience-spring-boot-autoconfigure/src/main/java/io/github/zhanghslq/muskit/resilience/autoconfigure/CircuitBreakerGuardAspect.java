@@ -7,6 +7,10 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
+import io.github.zhanghslq.muskit.observation.MuskitMetric;
+import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.observation.MuskitTagKey;
+import io.github.zhanghslq.muskit.observation.ObservationTags;
 import io.github.zhanghslq.muskit.resilience.circuitbreaker.CircuitBreaker;
 import io.github.zhanghslq.muskit.resilience.circuitbreaker.CircuitBreakerGuard;
 import io.github.zhanghslq.muskit.resilience.circuitbreaker.CircuitBreakerPermit;
@@ -31,6 +35,7 @@ public final class CircuitBreakerGuardAspect implements Ordered {
 
     private final CircuitBreaker circuitBreaker;
     private final CircuitBreakerPolicyResolver policyResolver;
+    private final MuskitObservationRegistry observationRegistry;
     private final int order;
 
     /**
@@ -44,8 +49,25 @@ public final class CircuitBreakerGuardAspect implements Ordered {
             CircuitBreaker circuitBreaker,
             CircuitBreakerPolicyResolver policyResolver,
             int order) {
+        this(circuitBreaker, policyResolver, order, MuskitObservationRegistry.noop());
+    }
+
+    /**
+     * 创建带统一可观测性的熔断注解切面。
+     *
+     * @param circuitBreaker 熔断 Provider
+     * @param policyResolver 熔断策略解析器
+     * @param order 切面顺序
+     * @param observationRegistry 统一观测注册器
+     */
+    public CircuitBreakerGuardAspect(
+            CircuitBreaker circuitBreaker,
+            CircuitBreakerPolicyResolver policyResolver,
+            int order,
+            MuskitObservationRegistry observationRegistry) {
         this.circuitBreaker = Objects.requireNonNull(circuitBreaker, "熔断 Provider 不能为空");
         this.policyResolver = Objects.requireNonNull(policyResolver, "熔断策略解析器不能为空");
+        this.observationRegistry = Objects.requireNonNull(observationRegistry, "统一观测注册器不能为空");
         this.order = order;
     }
 
@@ -64,22 +86,23 @@ public final class CircuitBreakerGuardAspect implements Ordered {
         CircuitBreakerGuard guard = resolveGuard(method, invokedMethod, joinPoint.getTarget());
         CircuitBreakerPolicy policy = policyResolver.resolve(guard.policy());
         CircuitBreakerPermit permit = circuitBreaker.acquire(policy);
+        ObservationTags tags = ObservationTags.of(MuskitTagKey.POLICY, policy.name());
         long startedAt = System.nanoTime();
         try {
             Object result = joinPoint.proceed();
             if (result instanceof CompletionStage<?> stage) {
                 return stage.whenComplete((value, failure) -> {
                     if (failure == null) {
-                        recordSuccess(permit, startedAt);
+                        recordSuccess(permit, startedAt, tags);
                     } else {
-                        recordFailure(permit, startedAt, unwrap(failure));
+                        recordFailure(permit, startedAt, unwrap(failure), tags);
                     }
                 });
             }
-            recordSuccess(permit, startedAt);
+            recordSuccess(permit, startedAt, tags);
             return result;
         } catch (Throwable failure) {
-            recordFailure(permit, startedAt, failure);
+            recordFailure(permit, startedAt, failure, tags);
             throw failure;
         }
     }
@@ -99,12 +122,21 @@ public final class CircuitBreakerGuardAspect implements Ordered {
      *
      * @param permit 调用许可
      * @param startedAt 调用开始单调时间
+     * @param tags 指标标签
      */
-    private void recordSuccess(CircuitBreakerPermit permit, long startedAt) {
+    private void recordSuccess(CircuitBreakerPermit permit, long startedAt, ObservationTags tags) {
+        Duration elapsed = elapsed(startedAt);
         try {
-            permit.success(elapsed(startedAt));
+            permit.success(elapsed);
         } finally {
-            permit.close();
+            try {
+                permit.close();
+            } finally {
+                observationRegistry.recordDuration(
+                        MuskitMetric.CIRCUIT_BREAKER_CALL,
+                        elapsed,
+                        tags.and(MuskitTagKey.OUTCOME, "success"));
+            }
         }
     }
 
@@ -114,12 +146,25 @@ public final class CircuitBreakerGuardAspect implements Ordered {
      * @param permit 调用许可
      * @param startedAt 调用开始单调时间
      * @param failure 业务异常
+     * @param tags 指标标签
      */
-    private void recordFailure(CircuitBreakerPermit permit, long startedAt, Throwable failure) {
+    private void recordFailure(
+            CircuitBreakerPermit permit,
+            long startedAt,
+            Throwable failure,
+            ObservationTags tags) {
+        Duration elapsed = elapsed(startedAt);
         try {
-            permit.failure(elapsed(startedAt), failure);
+            permit.failure(elapsed, failure);
         } finally {
-            permit.close();
+            try {
+                permit.close();
+            } finally {
+                observationRegistry.recordDuration(
+                        MuskitMetric.CIRCUIT_BREAKER_CALL,
+                        elapsed,
+                        tags.and(MuskitTagKey.OUTCOME, "failure"));
+            }
         }
     }
 

@@ -35,6 +35,9 @@ public final class LocalDistributedLockProvider implements DistributedLockProvid
     @Override
     public Optional<DistributedLockHandle> tryAcquire(DistributedLockRequest request) throws InterruptedException {
         Objects.requireNonNull(request, "锁请求不能为空");
+        if (request.fencing()) {
+            throw new FencingTokenUnavailableException(request.name());
+        }
         LockIdentity identity = new LockIdentity(request.name(), request.key());
         LockEntry entry = entries.compute(identity, (ignored, current) -> {
             LockEntry selected = current == null ? new LockEntry(request.fair()) : current;

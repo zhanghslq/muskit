@@ -3,6 +3,7 @@ package io.github.zhanghslq.muskit.lock.redis;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -14,6 +15,7 @@ import io.github.zhanghslq.muskit.lock.DistributedLockProvider;
 import io.github.zhanghslq.muskit.lock.DistributedLockRequest;
 import io.github.zhanghslq.muskit.lock.DistributedLockUnavailableException;
 import org.redisson.api.RFuture;
+import org.redisson.api.RAtomicLong;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 
@@ -76,9 +78,13 @@ public final class RedisDistributedLockProvider implements DistributedLockProvid
                 Throwable cause = exception.getCause() == null ? exception : exception.getCause();
                 throw new DistributedLockUnavailableException(request.name(), cause);
             }
-            return acquired
-                    ? Optional.of(new RedisLockHandle(request.name(), lock, ownerThreadId))
-                    : Optional.empty();
+            if (!acquired) {
+                return Optional.empty();
+            }
+            long fencingToken = request.fencing()
+                    ? nextFencingToken(request, redisKey, lock, ownerThreadId)
+                    : 0L;
+            return Optional.of(new RedisLockHandle(request.name(), lock, ownerThreadId, fencingToken));
         } catch (DistributedLockUnavailableException exception) {
             throw exception;
         } catch (InterruptedException exception) {
@@ -115,6 +121,38 @@ public final class RedisDistributedLockProvider implements DistributedLockProvid
     }
 
     /**
+     * 在已经持有互斥锁后生成严格递增的 fencing token。
+     *
+     * @param request 锁请求
+     * @param redisKey Redis 锁键
+     * @param lock 已获取的 Redis 锁
+     * @param ownerThreadId Redisson 所有者标识
+     * @return 正数 fencing token
+     */
+    private long nextFencingToken(
+            DistributedLockRequest request,
+            String redisKey,
+            RLock lock,
+            long ownerThreadId) {
+        try {
+            RAtomicLong counter = redissonClient.getAtomicLong(redisKey + ":fencing");
+            long token = counter.incrementAndGet();
+            if (token <= 0) {
+                throw new IllegalStateException("fencing token 计数器已溢出");
+            }
+            return token;
+        } catch (RuntimeException exception) {
+            // token 生成失败时不能把一把没有 fencing 语义的锁交给业务，必须先释放锁再报告失败。
+            try {
+                lock.unlockAsync(ownerThreadId).toCompletableFuture().join();
+            } catch (RuntimeException releaseFailure) {
+                exception.addSuppressed(releaseFailure);
+            }
+            throw new DistributedLockUnavailableException(request.name(), exception);
+        }
+    }
+
+    /**
      * 使用获取锁时的 Redisson 线程标识执行幂等释放。
      *
      * @author zhs
@@ -125,6 +163,7 @@ public final class RedisDistributedLockProvider implements DistributedLockProvid
         private final String lockName;
         private final RLock lock;
         private final long ownerThreadId;
+        private final long fencingToken;
         private final AtomicBoolean closed = new AtomicBoolean();
 
         /**
@@ -133,11 +172,23 @@ public final class RedisDistributedLockProvider implements DistributedLockProvid
          * @param lockName 低基数锁名称
          * @param lock Redisson 锁
          * @param ownerThreadId 获取锁时的线程标识
+         * @param fencingToken fencing token，零表示未启用
          */
-        private RedisLockHandle(String lockName, RLock lock, long ownerThreadId) {
+        private RedisLockHandle(String lockName, RLock lock, long ownerThreadId, long fencingToken) {
             this.lockName = lockName;
             this.lock = lock;
             this.ownerThreadId = ownerThreadId;
+            this.fencingToken = fencingToken;
+        }
+
+        /**
+         * 返回本次锁获取对应的 fencing token。
+         *
+         * @return 启用 fencing 时返回正数 token，否则为空
+         */
+        @Override
+        public OptionalLong fencingToken() {
+            return fencingToken > 0 ? OptionalLong.of(fencingToken) : OptionalLong.empty();
         }
 
         /**

@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit;
 
 import io.github.zhanghslq.muskit.idempotency.Idempotent;
 import io.github.zhanghslq.muskit.lock.DistributedLock;
+import io.github.zhanghslq.muskit.lock.FencingTokenContext;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitGuard;
 import org.springframework.stereotype.Service;
 
@@ -33,10 +34,12 @@ public class OrderSubmissionService {
             key = "#orderId",
             waitTime = 500,
             leaseTime = 30_000,
-            timeUnit = TimeUnit.MILLISECONDS)
+            timeUnit = TimeUnit.MILLISECONDS,
+            fencing = true)
     @Idempotent(operation = "order-submit", key = "#orderId")
     @RateLimitGuard(policy = "order-submit", key = "#orderId")
     public String submit(String orderId) {
-        return "submitted:" + orderId;
+        long fencingToken = FencingTokenContext.current().orElseThrow();
+        return "submitted:" + orderId + ":token=" + fencingToken;
     }
 }

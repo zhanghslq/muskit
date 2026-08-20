@@ -1,0 +1,2 @@
+io.github.zhanghslq.muskit.cache.autoconfigure.MuskitCacheRedisAutoConfiguration
+io.github.zhanghslq.muskit.cache.autoconfigure.MuskitCacheAutoConfiguration

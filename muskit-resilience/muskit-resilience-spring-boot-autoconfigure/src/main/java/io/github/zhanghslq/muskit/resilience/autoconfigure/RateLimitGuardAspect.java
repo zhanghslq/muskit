@@ -5,6 +5,10 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import io.github.zhanghslq.muskit.observation.MuskitMetric;
+import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.observation.MuskitTagKey;
+import io.github.zhanghslq.muskit.observation.ObservationTags;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitDecision;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitGuard;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitPolicy;
@@ -39,6 +43,7 @@ public final class RateLimitGuardAspect implements Ordered {
     private final RateLimiter rateLimiter;
     private final RateLimitPolicyResolver policyResolver;
     private final BeanFactory beanFactory;
+    private final MuskitObservationRegistry observationRegistry;
     private final int order;
     private final ExpressionParser expressionParser = new SpelExpressionParser();
     private final DefaultParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
@@ -57,9 +62,28 @@ public final class RateLimitGuardAspect implements Ordered {
             RateLimitPolicyResolver policyResolver,
             BeanFactory beanFactory,
             int order) {
+        this(rateLimiter, policyResolver, beanFactory, order, MuskitObservationRegistry.noop());
+    }
+
+    /**
+     * 创建带统一可观测性的限流注解切面。
+     *
+     * @param rateLimiter 限流 Provider
+     * @param policyResolver 限流策略解析器
+     * @param beanFactory Spring Bean 工厂
+     * @param order 切面顺序
+     * @param observationRegistry 统一观测注册器
+     */
+    public RateLimitGuardAspect(
+            RateLimiter rateLimiter,
+            RateLimitPolicyResolver policyResolver,
+            BeanFactory beanFactory,
+            int order,
+            MuskitObservationRegistry observationRegistry) {
         this.rateLimiter = Objects.requireNonNull(rateLimiter, "限流 Provider 不能为空");
         this.policyResolver = Objects.requireNonNull(policyResolver, "限流策略解析器不能为空");
         this.beanFactory = Objects.requireNonNull(beanFactory, "BeanFactory 不能为空");
+        this.observationRegistry = Objects.requireNonNull(observationRegistry, "统一观测注册器不能为空");
         this.order = order;
     }
 
@@ -79,7 +103,14 @@ public final class RateLimitGuardAspect implements Ordered {
         RateLimitPolicy policy = policyResolver.resolve(guard.policy());
         String key = evaluateKey(guard.key(), method, joinPoint.getTarget(), joinPoint.getArgs());
         RateLimitDecision decision = rateLimiter.tryAcquire(new RateLimitRequest(policy, key));
+        ObservationTags tags = ObservationTags.of(MuskitTagKey.POLICY, policy.name());
+        observationRegistry.increment(
+                MuskitMetric.RATE_LIMIT_REQUEST,
+                tags.and(MuskitTagKey.OUTCOME, decision.allowed() ? "allowed" : "rejected"));
         if (!decision.allowed()) {
+            observationRegistry.increment(
+                    MuskitMetric.RATE_LIMIT_REJECTED,
+                    tags.and(MuskitTagKey.OUTCOME, "rejected"));
             throw new RateLimitRejectedException(policy.name(), decision.retryAfter());
         }
         return joinPoint.proceed();

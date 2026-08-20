@@ -77,6 +77,15 @@ public final class RedisIdempotencyStore implements IdempotencyStore {
             return 0
             """;
 
+    private static final String RENEW_SCRIPT = """
+            if redis.call('hget', KEYS[1], 'status') == 'PROCESSING'
+                    and redis.call('hget', KEYS[1], 'owner') == ARGV[1] then
+                redis.call('pexpire', KEYS[1], ARGV[2])
+                return 1
+            end
+            return 0
+            """;
+
     private final RScript script;
     private final String keyPrefix;
 
@@ -205,6 +214,37 @@ public final class RedisIdempotencyStore implements IdempotencyStore {
             return Optional.of(IdempotencyResultCodec.decode(bytes));
         } catch (RuntimeException exception) {
             throw new IdempotencyStoreException(request.operation(), exception);
+        }
+    }
+
+    /**
+     * 原子校验所有权并刷新 Redis 处理中状态 TTL。
+     *
+     * @param claim 幂等所有权声明
+     * @param processingTimeout 新处理超时时间
+     */
+    @Override
+    public void renew(IdempotencyClaim claim, Duration processingTimeout) {
+        Objects.requireNonNull(claim, "幂等所有权声明不能为空");
+        Objects.requireNonNull(processingTimeout, "处理超时时间不能为空");
+        if (processingTimeout.isZero() || processingTimeout.isNegative()) {
+            throw new IllegalArgumentException("处理超时时间必须为正数");
+        }
+        try {
+            Number renewed = script.eval(
+                    RScript.Mode.READ_WRITE,
+                    RENEW_SCRIPT,
+                    RScript.ReturnType.LONG,
+                    Collections.singletonList(redisKey(claim.operation(), claim.key())),
+                    claim.ownerToken(),
+                    toRedisMillis(processingTimeout));
+            if (renewed.intValue() != 1) {
+                throw new IdempotencyOwnershipLostException(claim.operation());
+            }
+        } catch (IdempotencyOwnershipLostException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new IdempotencyStoreException(claim.operation(), exception);
         }
     }
 

@@ -62,6 +62,26 @@ class DistributedLockCoreTest {
     }
 
     /**
+     * 验证 fencing token 作用域嵌套恢复且本地锁明确拒绝 fencing。
+     */
+    @Test
+    void shouldScopeAndRejectLocalFencing() {
+        try (FencingTokenContext.Scope ignored = FencingTokenContext.open(10)) {
+            assertThat(FencingTokenContext.current()).hasValue(10);
+            try (FencingTokenContext.Scope ignoredNested = FencingTokenContext.open(20)) {
+                assertThat(FencingTokenContext.current()).hasValue(20);
+            }
+            assertThat(FencingTokenContext.current()).hasValue(10);
+        }
+        assertThat(FencingTokenContext.current()).isEmpty();
+
+        DistributedLockRequest fenced = new DistributedLockRequest(
+                "order-submit", "A", Duration.ZERO, Duration.ZERO, false, true, true);
+        assertThatThrownBy(() -> new LocalDistributedLockProvider().tryAcquire(fenced))
+                .isInstanceOf(FencingTokenUnavailableException.class);
+    }
+
+    /**
      * 创建测试锁请求。
      *
      * @param key 业务锁键
