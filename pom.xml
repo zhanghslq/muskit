@@ -75,8 +75,10 @@
         <module>muskit-bom</module>
         <module>muskit-test-support</module>
         <module>muskit-context/muskit-context-core</module>
+        <module>muskit-context/muskit-context-reactor-adapter</module>
         <module>muskit-context/muskit-context-spring-boot-autoconfigure</module>
         <module>muskit-context/muskit-spring-boot-starter-context</module>
+        <module>muskit-context/muskit-spring-boot-starter-context-reactor</module>
         <module>muskit-concurrency/muskit-concurrency-core</module>
         <module>muskit-concurrency/muskit-concurrency-redis-adapter</module>
         <module>muskit-concurrency/muskit-concurrency-spring-boot-autoconfigure</module>

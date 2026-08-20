@@ -7,8 +7,11 @@ import io.github.zhanghslq.muskit.concurrency.ConcurrencyPermit;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyPolicy;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyRequest;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyScope;
+import io.github.zhanghslq.muskit.test.concurrency.DistributedConcurrencyLimiterContract;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.redisson.Redisson;
@@ -29,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Testcontainers(disabledWithoutDocker = true)
 @Timeout(value = 90, unit = TimeUnit.SECONDS)
-class RedisConcurrencyLimiterIntegrationTest {
+class RedisConcurrencyLimiterIntegrationTest extends DistributedConcurrencyLimiterContract {
 
     @Container
     private static final GenericContainer<?> REDIS = new GenericContainer<>(
@@ -37,6 +40,8 @@ class RedisConcurrencyLimiterIntegrationTest {
 
     private static RedissonClient firstClient;
     private static RedissonClient secondClient;
+    private RedisConcurrencyLimiter firstLimiter;
+    private RedisConcurrencyLimiter secondLimiter;
 
     /**
      * 创建两个模拟应用实例的 Redisson 客户端。
@@ -61,27 +66,66 @@ class RedisConcurrencyLimiterIntegrationTest {
     }
 
     /**
+     * 为每个测试创建共享相同 Redis 命名空间的两个 Provider。
+     */
+    @BeforeEach
+    void setUpLimiters() {
+        firstLimiter = limiter(firstClient);
+        secondLimiter = limiter(secondClient);
+    }
+
+    /**
+     * 关闭每个测试创建的额度续期线程。
+     */
+    @AfterEach
+    void shutDownLimiters() {
+        if (firstLimiter != null) {
+            firstLimiter.close();
+        }
+        if (secondLimiter != null) {
+            secondLimiter.close();
+        }
+    }
+
+    /**
+     * 返回第一个应用实例的 Redis 并发额度 Provider。
+     *
+     * @return 第一个 Provider
+     */
+    @Override
+    protected RedisConcurrencyLimiter firstLimiter() {
+        return firstLimiter;
+    }
+
+    /**
+     * 返回第二个应用实例的 Redis 并发额度 Provider。
+     *
+     * @return 第二个 Provider
+     */
+    @Override
+    protected RedisConcurrencyLimiter secondLimiter() {
+        return secondLimiter;
+    }
+
+    /**
      * 验证两个应用实例共同遵守最大并发数，且额度在短租约期间持续续期。
      *
      * @throws Exception 等待或额度获取失败
      */
     @Test
     void shouldEnforceCapacityAcrossInstancesAndRenewLease() throws Exception {
-        try (RedisConcurrencyLimiter first = limiter(firstClient);
-                RedisConcurrencyLimiter second = limiter(secondClient)) {
-            ConcurrencyRequest request = request();
-            ConcurrencyPermit firstPermit = first.tryAcquire(request).orElseThrow();
-            ConcurrencyPermit secondPermit = second.tryAcquire(request).orElseThrow();
+        ConcurrencyRequest request = distributedRequest();
+        ConcurrencyPermit firstPermit = firstLimiter.tryAcquire(request).orElseThrow();
+        ConcurrencyPermit secondPermit = secondLimiter.tryAcquire(request).orElseThrow();
 
-            assertThat(first.tryAcquire(request)).isEmpty();
-            Thread.sleep(700);
-            assertThat(second.tryAcquire(request)).isEmpty();
+        assertThat(firstLimiter.tryAcquire(request)).isEmpty();
+        Thread.sleep(700);
+        assertThat(secondLimiter.tryAcquire(request)).isEmpty();
 
-            firstPermit.close();
-            ConcurrencyPermit replacement = second.tryAcquire(request).orElseThrow();
-            replacement.close();
-            secondPermit.close();
-        }
+        firstPermit.close();
+        ConcurrencyPermit replacement = secondLimiter.tryAcquire(request).orElseThrow();
+        replacement.close();
+        secondPermit.close();
     }
 
     /**
@@ -110,7 +154,7 @@ class RedisConcurrencyLimiterIntegrationTest {
      *
      * @return 测试并发请求
      */
-    private ConcurrencyRequest request() {
+    private ConcurrencyRequest distributedRequest() {
         return new ConcurrencyRequest(
                 new ConcurrencyPolicy("distributed", 2, Duration.ZERO, ConcurrencyScope.GLOBAL, false),
                 "");

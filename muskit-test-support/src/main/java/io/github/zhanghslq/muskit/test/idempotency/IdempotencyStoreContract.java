@@ -8,12 +8,14 @@ import java.util.UUID;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyAttempt;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyClaim;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyDecision;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyOwnershipLostException;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyRequest;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyResult;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * 所有幂等状态存储实现都应通过的状态机契约测试。
@@ -91,6 +93,40 @@ public abstract class IdempotencyStoreContract {
         assertEquals(result.contentType(), loaded.contentType());
         assertEquals(result.headers(), loaded.headers());
         assertEquals("{\"orderId\":42}", new String(loaded.body(), StandardCharsets.UTF_8));
+    }
+
+    /**
+     * 验证续期保持当前所有权，其他实例仍然只能看到处理中状态。
+     */
+    @Test
+    void shouldRenewCurrentOwner() {
+        IdempotencyRequest request = request("renew");
+        IdempotencyClaim claim = firstStore().tryStart(request).claim().orElseThrow();
+
+        firstStore().renew(claim, Duration.ofSeconds(30));
+
+        assertEquals(IdempotencyDecision.IN_PROGRESS, secondStore().tryStart(request).decision());
+    }
+
+    /**
+     * 验证伪造或过期的所有权令牌不能完成、续期或释放当前状态。
+     */
+    @Test
+    void shouldRejectStaleOwnerToken() {
+        IdempotencyRequest request = request("stale-owner");
+        IdempotencyClaim current = firstStore().tryStart(request).claim().orElseThrow();
+        IdempotencyClaim stale = new IdempotencyClaim(
+                current.operation(),
+                current.key(),
+                UUID.randomUUID().toString(),
+                current.retention());
+
+        assertThrows(IdempotencyOwnershipLostException.class, () -> secondStore().complete(stale));
+        assertThrows(
+                IdempotencyOwnershipLostException.class,
+                () -> secondStore().renew(stale, Duration.ofSeconds(30)));
+        assertThrows(IdempotencyOwnershipLostException.class, () -> secondStore().release(stale));
+        firstStore().release(current);
     }
 
     /**

@@ -6,6 +6,8 @@ import java.util.concurrent.TimeUnit;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitPolicy;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitRequest;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitScope;
+import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimiter;
+import io.github.zhanghslq.muskit.test.ratelimit.DistributedRateLimiterContract;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -28,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Testcontainers(disabledWithoutDocker = true)
 @Timeout(value = 90, unit = TimeUnit.SECONDS)
-class RedisTokenBucketRateLimiterIntegrationTest {
+class RedisTokenBucketRateLimiterIntegrationTest extends DistributedRateLimiterContract {
 
     @Container
     private static final GenericContainer<?> REDIS = new GenericContainer<>(
@@ -86,6 +88,26 @@ class RedisTokenBucketRateLimiterIntegrationTest {
 
         assertThat(limiter.tryAcquire(request("key-a")).allowed()).isTrue();
         assertThat(limiter.tryAcquire(request("key-b")).allowed()).isTrue();
+    }
+
+    /**
+     * 返回第一个应用实例的 Redis 限流 Provider。
+     *
+     * @return 第一个限流 Provider
+     */
+    @Override
+    protected RateLimiter firstLimiter() {
+        return limiter(firstClient);
+    }
+
+    /**
+     * 返回第二个应用实例的 Redis 限流 Provider。
+     *
+     * @return 第二个限流 Provider
+     */
+    @Override
+    protected RateLimiter secondLimiter() {
+        return limiter(secondClient);
     }
 
     /**

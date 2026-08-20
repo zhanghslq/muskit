@@ -11,6 +11,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class MuskitContextHolder {
 
+    /** Micrometer 与 Reactor 共享的业务上下文键。 */
+    public static final String CONTEXT_KEY = "muskit.context";
+
     private static final ThreadLocal<MuskitContext> HOLDER = new ThreadLocal<>();
 
     /**

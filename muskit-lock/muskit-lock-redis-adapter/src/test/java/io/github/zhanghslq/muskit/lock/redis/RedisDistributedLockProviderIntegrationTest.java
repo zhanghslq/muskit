@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 import io.github.zhanghslq.muskit.lock.DistributedLockHandle;
 import io.github.zhanghslq.muskit.lock.DistributedLockRequest;
 import io.github.zhanghslq.muskit.lock.DistributedLockProvider;
-import io.github.zhanghslq.muskit.test.lock.DistributedLockProviderContract;
+import io.github.zhanghslq.muskit.test.lock.FencedDistributedLockProviderContract;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Testcontainers(disabledWithoutDocker = true)
 @Timeout(value = 90, unit = TimeUnit.SECONDS)
-class RedisDistributedLockProviderIntegrationTest extends DistributedLockProviderContract {
+class RedisDistributedLockProviderIntegrationTest extends FencedDistributedLockProviderContract {
 
     @Container
     private static final GenericContainer<?> REDIS = new GenericContainer<>(

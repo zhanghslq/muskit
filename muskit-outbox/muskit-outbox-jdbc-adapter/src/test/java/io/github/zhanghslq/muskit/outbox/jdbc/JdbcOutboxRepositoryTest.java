@@ -11,6 +11,8 @@ import java.util.UUID;
 
 import io.github.zhanghslq.muskit.outbox.OutboxClaim;
 import io.github.zhanghslq.muskit.outbox.OutboxEvent;
+import io.github.zhanghslq.muskit.outbox.OutboxRepository;
+import io.github.zhanghslq.muskit.test.outbox.OutboxRepositoryContract;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -27,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * @author zhs
  * @since 2026-08-20
  */
-class JdbcOutboxRepositoryTest {
+class JdbcOutboxRepositoryTest extends OutboxRepositoryContract {
 
     private static final Instant INITIAL_TIME = Instant.parse("2026-08-20T00:00:00Z");
 
@@ -165,6 +167,43 @@ class JdbcOutboxRepositoryTest {
                 "muskit_outbox",
                 requireTransaction,
                 Clock.fixed(instant, ZoneOffset.UTC));
+    }
+
+    /**
+     * 返回第一个应用实例在指定时刻看到的 JDBC Outbox 存储。
+     *
+     * @param now 当前时刻
+     * @return 第一个 Outbox 存储
+     */
+    @Override
+    protected OutboxRepository firstRepositoryAt(Instant now) {
+        JdbcOutboxRepository repository = repositoryAt(now, true);
+        repository.initializeSchema();
+        return repository;
+    }
+
+    /**
+     * 返回第二个应用实例在指定时刻看到的 JDBC Outbox 存储。
+     *
+     * @param now 当前时刻
+     * @return 第二个 Outbox 存储
+     */
+    @Override
+    protected OutboxRepository secondRepositoryAt(Instant now) {
+        JdbcOutboxRepository repository = repositoryAt(now, true);
+        repository.initializeSchema();
+        return repository;
+    }
+
+    /**
+     * 在真实 Spring 数据库事务中追加契约测试事件。
+     *
+     * @param repository Outbox 存储
+     * @param event 待追加事件
+     */
+    @Override
+    protected void append(OutboxRepository repository, OutboxEvent event) {
+        transactionTemplate.executeWithoutResult(status -> repository.append(event));
     }
 
     /**

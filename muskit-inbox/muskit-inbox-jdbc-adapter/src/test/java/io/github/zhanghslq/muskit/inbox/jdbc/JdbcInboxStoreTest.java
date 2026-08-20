@@ -8,6 +8,8 @@ import java.util.UUID;
 
 import io.github.zhanghslq.muskit.inbox.InboxDecision;
 import io.github.zhanghslq.muskit.inbox.InboxRequest;
+import io.github.zhanghslq.muskit.inbox.InboxStore;
+import io.github.zhanghslq.muskit.test.inbox.InboxStoreContract;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author zhs
  * @since 2026-08-20
  */
-class JdbcInboxStoreTest {
+class JdbcInboxStoreTest extends InboxStoreContract {
 
     private static final Instant INITIAL_TIME = Instant.parse("2026-08-20T00:00:00Z");
     private JdbcTemplate jdbcTemplate;
@@ -98,6 +100,32 @@ class JdbcInboxStoreTest {
                 jdbcTemplate,
                 "muskit_inbox",
                 Clock.fixed(instant, ZoneOffset.UTC));
+    }
+
+    /**
+     * 返回第一个应用实例在指定时刻看到的 JDBC Inbox 存储。
+     *
+     * @param now 当前时刻
+     * @return 第一个 Inbox 存储
+     */
+    @Override
+    protected InboxStore firstStoreAt(Instant now) {
+        JdbcInboxStore store = storeAt(now);
+        store.initializeSchema();
+        return store;
+    }
+
+    /**
+     * 返回第二个应用实例在指定时刻看到的 JDBC Inbox 存储。
+     *
+     * @param now 当前时刻
+     * @return 第二个 Inbox 存储
+     */
+    @Override
+    protected InboxStore secondStoreAt(Instant now) {
+        JdbcInboxStore store = storeAt(now);
+        store.initializeSchema();
+        return store;
     }
 
     /**

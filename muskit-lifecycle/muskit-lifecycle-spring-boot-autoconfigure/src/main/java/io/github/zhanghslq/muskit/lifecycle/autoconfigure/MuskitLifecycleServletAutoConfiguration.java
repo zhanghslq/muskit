@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 
 /**
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Bean;
  */
 @AutoConfiguration(after = MuskitLifecycleAutoConfiguration.class)
 @ConditionalOnClass({Filter.class, DrainHttpFilter.class})
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnProperty(prefix = "muskit.lifecycle", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class MuskitLifecycleServletAutoConfiguration {
 

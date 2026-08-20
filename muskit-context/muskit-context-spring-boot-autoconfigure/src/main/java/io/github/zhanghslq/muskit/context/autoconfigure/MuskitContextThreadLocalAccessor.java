@@ -13,7 +13,7 @@ import io.micrometer.context.ThreadLocalAccessor;
 public final class MuskitContextThreadLocalAccessor implements ThreadLocalAccessor<MuskitContext> {
 
     /** Muskit 业务上下文注册键。 */
-    public static final String KEY = "muskit.context";
+    public static final String KEY = MuskitContextHolder.CONTEXT_KEY;
 
     /**
      * 创建 Muskit 线程上下文访问器。

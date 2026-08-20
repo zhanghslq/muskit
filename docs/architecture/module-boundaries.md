@@ -22,7 +22,8 @@ Transactional Outbox 同样遵守该方向：`muskit-outbox-core` 只定义事�
 新增治理能力继续按相同边界拆分：
 
 - `muskit-observation-core` 只定义稳定指标和观测 SPI，Micrometer 与 Actuator 位于 adapter/autoconfigure。
-- `muskit-lifecycle-core`、`muskit-executor-core` 不依赖 Servlet 或 Spring Boot；Servlet 摘流和 Bean 生命周期只在 autoconfigure。
+- `muskit-lifecycle-core`、`muskit-executor-core` 不依赖 Servlet、WebFlux 或 Spring Boot；两种 Web 技术栈的摘流和 Bean 生命周期只在 autoconfigure。
+- `muskit-context-core` 不依赖 Reactor；Reactor Context API 位于独立 adapter，并由专用 Starter 按需引入。
 - `muskit-inbox-core`、`muskit-cache-core`、`muskit-audit-core` 只定义状态机、算法和 SPI，JDBC/Redis/Micrometer 分别由 adapter 实现。
 - `muskit-client-core` 只处理请求头值的安全编码、Deadline 和上下文作用域，Spring RestClient/Servlet 位于 Spring adapter。
 - `muskit-state-core` 只提供无副作用迁移判定与乐观锁仓储 SPI，业务自行实现实体仓储。

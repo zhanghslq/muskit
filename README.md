@@ -19,6 +19,8 @@ Muskit 是面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工�
 | `muskit-bom` | 统一管理 Muskit 模块版本 |
 | `muskit-context-core` | 不可变业务上下文和线程作用域 |
 | `muskit-spring-boot-starter-context` | 基于 Micrometer Context Propagation 的 Spring 任务上下文传播 |
+| `muskit-context-reactor-adapter` | Reactor Context 显式读写与业务上下文桥接 API |
+| `muskit-spring-boot-starter-context-reactor` | Reactor 自动上下文传播 Starter，不影响纯 Servlet 应用依赖 |
 | `muskit-concurrency-core` | 并发策略、SPI 和本地 Semaphore 实现 |
 | `muskit-spring-boot-starter-concurrency` | `@ConcurrencyGuard` 注解、SpEL 业务键和 Spring Boot 自动配置 |
 | `muskit-concurrency-redis-adapter` | 基于 Redis 原子租约令牌和自动续期的跨实例并发上限 |
@@ -43,7 +45,7 @@ Muskit 是面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工�
 | `muskit-observation-core` | 统一低基数指标目录和可替换观测 SPI |
 | `muskit-observation-micrometer-adapter` | Muskit 指标到 Micrometer 的适配 |
 | `muskit-spring-boot-starter-observability` | 统一指标与 `/actuator/muskit` 能力快照 |
-| `muskit-spring-boot-starter-lifecycle` | Readiness 摘流、HTTP 在途请求统计和有界优雅排空 |
+| `muskit-spring-boot-starter-lifecycle` | Readiness 摘流、Servlet/WebFlux 在途请求统计和有界优雅排空 |
 | `muskit-spring-boot-starter-executor` | 有界平台/虚拟线程执行器、上下文传播和排空治理 |
 | `muskit-inbox-core` | 可靠消费状态机、退避重试、死信和人工回放 SPI |
 | `muskit-spring-boot-starter-inbox-jdbc` | JDBC Inbox 可靠消费 Starter |
@@ -58,7 +60,7 @@ Muskit 是面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工�
 | `muskit-outbox-jdbc-adapter` | 使用条件更新和有期限租约的 JDBC Outbox 存储 |
 | `muskit-outbox-kafka-adapter` | 等待 broker 确认的 Kafka Outbox 发布器 |
 | `muskit-spring-boot-starter-outbox` | JDBC + Kafka Transactional Outbox 自动配置与后台轮询 |
-| `muskit-test-support` | 基于虚拟线程的并发测试辅助工具 |
+| `muskit-test-support` | 并发测试工具，以及锁、幂等、并发额度、限流、Inbox、Outbox、缓存 Provider 契约测试 |
 
 ## 引入依赖
 
@@ -169,7 +171,7 @@ muskit:
         shutdown-timeout: 30s
 ```
 
-Lifecycle 在停止阶段先发布 `ReadinessState.REFUSING_TRAFFIC`，拒绝新的普通 HTTP 请求，再使用同一总超时预算排空在途请求和受管执行器。`ManagedTaskExecutor` 即使使用虚拟线程也会限制最大并发和等待容量，并传播 `MuskitContext` 与 `DeadlineContext`。
+Lifecycle 在停止阶段先发布 `ReadinessState.REFUSING_TRAFFIC`，拒绝新的普通 HTTP 请求，再使用同一总超时预算排空在途请求和受管执行器。Servlet 异步请求和 WebFlux 请求都会持有许可直到真正完成，并在完成、异常或取消时释放；健康检查等排除路径不会进入在途统计。`ManagedTaskExecutor` 即使使用虚拟线程也会限制最大并发和等待容量，并传播 `MuskitContext` 与 `DeadlineContext`。
 
 ## 业务上下文
 
@@ -184,11 +186,29 @@ try (MuskitContextHolder.Scope ignored = MuskitContextHolder.open(context)) {
 
 Context starter 会注册 Micrometer `ThreadLocalAccessor` 和 Spring `TaskDecorator`。如果应用已经提供自己的 `TaskDecorator`，自动配置会主动退让。
 
+响应式应用按需引入专用 Starter；基础 Context Starter 不会向纯 Servlet 应用传递 Reactor 依赖：
+
+```xml
+<dependency>
+    <groupId>io.github.zhanghslq</groupId>
+    <artifactId>muskit-spring-boot-starter-context-reactor</artifactId>
+</dependency>
+```
+
+业务入口将上下文写入 Reactor Context 后，自动传播会在异步调度边界恢复 `MuskitContextHolder`：
+
+```java
+MuskitContext context = MuskitContext.of(Map.of("tenantId", "tenant-1"));
+Mono<Order> result = loadOrder()
+        .contextWrite(MuskitReactorContext.with(context));
+```
+
 ```yaml
 muskit:
   context:
     enabled: true
     task-decorator-enabled: true
+    reactor-enabled: true
 ```
 
 ## 并发控制
@@ -610,6 +630,7 @@ public UUID createOrder(Order order) {
 - 不在后端不可用时隐式降级为更弱的本地语义
 
 完整边界见 [`docs/architecture/module-boundaries.md`](docs/architecture/module-boundaries.md)。
+新增或替换基础设施 Provider 时，必须复用 [`docs/testing/provider-contracts.md`](docs/testing/provider-contracts.md) 中说明的公共契约测试。
 
 ## 已完成路线
 

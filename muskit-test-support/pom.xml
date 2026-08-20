@@ -26,6 +26,31 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-concurrency-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-inbox-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-outbox-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-cache-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-resilience-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
         </dependency>

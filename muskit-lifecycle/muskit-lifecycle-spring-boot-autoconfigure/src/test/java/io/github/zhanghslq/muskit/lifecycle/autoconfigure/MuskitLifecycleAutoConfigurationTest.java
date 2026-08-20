@@ -5,7 +5,8 @@ import java.time.Duration;
 import io.github.zhanghslq.muskit.lifecycle.DrainController;
 import io.github.zhanghslq.muskit.lifecycle.DrainCoordinator;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.context.runner.ReactiveWebApplicationContextRunner;
+import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -20,10 +21,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class MuskitLifecycleAutoConfigurationTest {
 
-    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+    private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
             .withUserConfiguration(
                     MuskitLifecycleAutoConfiguration.class,
                     MuskitLifecycleServletAutoConfiguration.class);
+
+    private final ReactiveWebApplicationContextRunner reactiveContextRunner =
+            new ReactiveWebApplicationContextRunner()
+                    .withUserConfiguration(
+                            MuskitLifecycleAutoConfiguration.class,
+                            MuskitLifecycleReactiveAutoConfiguration.class);
 
     /**
      * 验证默认创建排空控制器、协调器、过滤器和生命周期。
@@ -35,6 +42,18 @@ class MuskitLifecycleAutoConfigurationTest {
             assertThat(context).hasSingleBean(DrainCoordinator.class);
             assertThat(context).hasSingleBean(DrainHttpFilter.class);
             assertThat(context).hasSingleBean(MuskitDrainLifecycle.class);
+        });
+    }
+
+    /**
+     * 验证响应式 Web 应用只创建 WebFlux 排空过滤器。
+     */
+    @Test
+    void shouldConfigureReactiveLifecycle() {
+        reactiveContextRunner.run(context -> {
+            assertThat(context).hasSingleBean(DrainController.class);
+            assertThat(context).hasSingleBean(DrainWebFilter.class);
+            assertThat(context).doesNotHaveBean(DrainHttpFilter.class);
         });
     }
 

@@ -21,4 +21,6 @@
 
 ## 新增 Provider
 
-新增 `ConcurrencyLimiter`、锁或幂等存储实现时，应首先复用 `muskit-test-support` 中的契约测试。实现不得通过弱化语义的方式让测试通过，也不得在后端故障时隐式回退为本地实现。
+新增并发额度、限流、锁、幂等、Inbox、Outbox 或缓存存储实现时，应首先复用 `muskit-test-support` 中的契约测试。实现不得通过弱化语义的方式让测试通过，也不得在后端故障时隐式回退为本地实现。
+
+契约基类、适用范围和接入示例见 [`docs/testing/provider-contracts.md`](docs/testing/provider-contracts.md)。基础契约只验证 SPI 明确承诺的语义；跨实例协调和 fencing 等增强保证使用独立契约，Provider 不得声明自己不具备的能力。

@@ -13,6 +13,7 @@ public class MuskitContextProperties {
 
     private boolean enabled = true;
     private boolean taskDecoratorEnabled = true;
+    private boolean reactorEnabled = true;
 
     /**
      * 创建 Muskit 业务上下文配置属性。
@@ -54,5 +55,23 @@ public class MuskitContextProperties {
      */
     public void setTaskDecoratorEnabled(boolean taskDecoratorEnabled) {
         this.taskDecoratorEnabled = taskDecoratorEnabled;
+    }
+
+    /**
+     * 返回是否启用 Reactor 自动上下文传播。
+     *
+     * @return 是否启用 Reactor 传播
+     */
+    public boolean isReactorEnabled() {
+        return reactorEnabled;
+    }
+
+    /**
+     * 设置是否启用 Reactor 自动上下文传播。
+     *
+     * @param reactorEnabled 是否启用 Reactor 传播
+     */
+    public void setReactorEnabled(boolean reactorEnabled) {
+        this.reactorEnabled = reactorEnabled;
     }
 }

@@ -1,10 +1,16 @@
 package io.github.zhanghslq.muskit.concurrency;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
-import io.github.zhanghslq.muskit.test.ConcurrentTestSupport;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,9 +68,11 @@ class LocalConcurrencyLimiterTest {
 
     /**
      * 验证大量虚拟线程同时执行时实际并发数不会超过策略上限。
+     *
+     * @throws Exception 并发任务执行失败或等待超时
      */
     @Test
-    void shouldLimitVirtualThreadConcurrency() {
+    void shouldLimitVirtualThreadConcurrency() throws Exception {
         LocalConcurrencyLimiter limiter = new LocalConcurrencyLimiter();
         ConcurrencyPolicy policy = new ConcurrencyPolicy(
                 "virtual-tasks", 4, Duration.ofSeconds(2), ConcurrencyScope.GLOBAL, false);
@@ -72,16 +80,29 @@ class LocalConcurrencyLimiterTest {
         AtomicInteger active = new AtomicInteger();
         AtomicInteger maximum = new AtomicInteger();
 
-        ConcurrentTestSupport.runConcurrently(40, Duration.ofSeconds(5), index -> {
-            try (ConcurrencyPermit ignored = limiter.tryAcquire(request).orElseThrow()) {
-                int current = active.incrementAndGet();
-                maximum.accumulateAndGet(current, Math::max);
-                Thread.sleep(Duration.ofMillis(10));
-                active.decrementAndGet();
-            }
-        });
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<CompletableFuture<Void>> tasks = IntStream.range(0, 40)
+                    .mapToObj(index -> CompletableFuture.runAsync(() -> {
+                        try (ConcurrencyPermit ignored = limiter.tryAcquire(request).orElseThrow()) {
+                            int current = active.incrementAndGet();
+                            try {
+                                maximum.accumulateAndGet(current, Math::max);
+                                Thread.sleep(Duration.ofMillis(10));
+                            } finally {
+                                active.decrementAndGet();
+                            }
+                        } catch (InterruptedException exception) {
+                            Thread.currentThread().interrupt();
+                            throw new CompletionException(exception);
+                        }
+                    }, executor))
+                    .toList();
+            CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new))
+                    .get(5, TimeUnit.SECONDS);
+        }
 
         assertThat(maximum.get()).isLessThanOrEqualTo(4);
+        assertThat(maximum.get()).isGreaterThan(1);
         assertThat(limiter.activeSlotCount()).isZero();
     }
 }

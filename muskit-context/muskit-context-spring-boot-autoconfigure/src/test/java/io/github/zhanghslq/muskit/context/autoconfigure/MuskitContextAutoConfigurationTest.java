@@ -1,15 +1,19 @@
 package io.github.zhanghslq.muskit.context.autoconfigure;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.github.zhanghslq.muskit.context.MuskitContext;
 import io.github.zhanghslq.muskit.context.MuskitContextHolder;
+import io.github.zhanghslq.muskit.context.reactor.MuskitReactorContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.core.task.TaskDecorator;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,7 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MuskitContextAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(MuskitContextAutoConfiguration.class));
+            .withConfiguration(AutoConfigurations.of(
+                    MuskitContextAutoConfiguration.class,
+                    MuskitContextReactorAutoConfiguration.class));
 
     /**
      * 每个测试结束后清理当前线程上下文。
@@ -41,6 +47,7 @@ class MuskitContextAutoConfigurationTest {
             assertThat(context).hasSingleBean(MuskitContextThreadLocalAccessor.class);
             assertThat(context).hasSingleBean(MuskitContextAccessorRegistrar.class);
             assertThat(context).hasSingleBean(TaskDecorator.class);
+            assertThat(context).hasSingleBean(MuskitReactorContextPropagationRegistrar.class);
         });
     }
 
@@ -74,7 +81,37 @@ class MuskitContextAutoConfigurationTest {
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(MuskitContextThreadLocalAccessor.class);
                     assertThat(context).doesNotHaveBean(TaskDecorator.class);
+                    assertThat(context).doesNotHaveBean(MuskitReactorContextPropagationRegistrar.class);
+                });
+    }
+
+    /**
+     * 验证 Reactor Context 中的业务上下文会在异步调度线程恢复并在信号后清理。
+     */
+    @Test
+    void shouldPropagateContextAcrossReactorScheduler() {
+        contextRunner.run(context -> {
+            MuskitContext expected = MuskitContext.of(Map.of("tenantId", "tenant-reactive"));
+            MuskitContext observed = Mono.defer(() -> Mono.just(MuskitContextHolder.currentOrEmpty()))
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .contextWrite(MuskitReactorContext.with(expected))
+                    .block(Duration.ofSeconds(5));
+
+            assertThat(observed).isEqualTo(expected);
+            assertThat(MuskitContextHolder.current()).isEmpty();
+        });
+    }
+
+    /**
+     * 验证可以单独关闭 Reactor 自动传播而保留任务装饰器。
+     */
+    @Test
+    void shouldDisableOnlyReactorPropagation() {
+        contextRunner
+                .withPropertyValues("muskit.context.reactor-enabled=false")
+                .run(context -> {
+                    assertThat(context).hasSingleBean(TaskDecorator.class);
+                    assertThat(context).doesNotHaveBean(MuskitReactorContextPropagationRegistrar.class);
                 });
     }
 }
-
