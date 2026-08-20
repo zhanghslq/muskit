@@ -1,0 +1,80 @@
+package io.github.muskit.context.autoconfigure;
+
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+
+import io.github.muskit.context.MuskitContext;
+import io.github.muskit.context.MuskitContextHolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.task.TaskDecorator;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * MuskitContextAutoConfiguration 自动配置测试。
+ *
+ * @author zhs
+ * @since 2026-08-20
+ */
+class MuskitContextAutoConfigurationTest {
+
+    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(MuskitContextAutoConfiguration.class));
+
+    /**
+     * 每个测试结束后清理当前线程上下文。
+     */
+    @AfterEach
+    void cleanContext() {
+        MuskitContextHolder.clear();
+    }
+
+    /**
+     * 验证默认自动配置会创建访问器、注册器和任务装饰器。
+     */
+    @Test
+    void shouldConfigureContextPropagationByDefault() {
+        contextRunner.run(context -> {
+            assertThat(context).hasSingleBean(MuskitContextThreadLocalAccessor.class);
+            assertThat(context).hasSingleBean(MuskitContextAccessorRegistrar.class);
+            assertThat(context).hasSingleBean(TaskDecorator.class);
+        });
+    }
+
+    /**
+     * 验证任务装饰器会在任务执行期间恢复并在执行后清理上下文。
+     */
+    @Test
+    void shouldPropagateContextWithTaskDecorator() {
+        contextRunner.run(context -> {
+            TaskDecorator decorator = context.getBean(TaskDecorator.class);
+            MuskitContext expected = MuskitContext.of(Map.of("tenantId", "tenant-1"));
+            AtomicReference<MuskitContext> observed = new AtomicReference<>();
+            MuskitContextHolder.set(expected);
+            Runnable decorated = decorator.decorate(() -> observed.set(MuskitContextHolder.currentOrEmpty()));
+            MuskitContextHolder.clear();
+
+            decorated.run();
+
+            assertThat(observed).hasValue(expected);
+            assertThat(MuskitContextHolder.current()).isEmpty();
+        });
+    }
+
+    /**
+     * 验证总开关关闭后不会创建上下文传播组件。
+     */
+    @Test
+    void shouldBackOffWhenDisabled() {
+        contextRunner
+                .withPropertyValues("muskit.context.enabled=false")
+                .run(context -> {
+                    assertThat(context).doesNotHaveBean(MuskitContextThreadLocalAccessor.class);
+                    assertThat(context).doesNotHaveBean(TaskDecorator.class);
+                });
+    }
+}
+

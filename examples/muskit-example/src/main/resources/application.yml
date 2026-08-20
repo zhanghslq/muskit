@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: muskit-example
+  threads:
+    virtual:
+      enabled: true
+
+muskit:
+  context:
+    enabled: true
+    task-decorator-enabled: true
+  concurrency:
+    enabled: true
+    policies:
+      tenant-export:
+        max-concurrency: 2
+        max-wait: 200ms
+        scope: key
+        fair: false
