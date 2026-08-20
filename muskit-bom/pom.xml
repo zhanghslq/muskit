@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.github.muskit</groupId>
+        <groupId>io.github.zhanghslq</groupId>
         <artifactId>muskit-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -18,37 +18,37 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>io.github.muskit</groupId>
+                <groupId>io.github.zhanghslq</groupId>
                 <artifactId>muskit-test-support</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.muskit</groupId>
+                <groupId>io.github.zhanghslq</groupId>
                 <artifactId>muskit-context-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.muskit</groupId>
+                <groupId>io.github.zhanghslq</groupId>
                 <artifactId>muskit-context-spring-boot-autoconfigure</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.muskit</groupId>
+                <groupId>io.github.zhanghslq</groupId>
                 <artifactId>muskit-spring-boot-starter-context</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.muskit</groupId>
+                <groupId>io.github.zhanghslq</groupId>
                 <artifactId>muskit-concurrency-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.muskit</groupId>
+                <groupId>io.github.zhanghslq</groupId>
                 <artifactId>muskit-concurrency-spring-boot-autoconfigure</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.muskit</groupId>
+                <groupId>io.github.zhanghslq</groupId>
                 <artifactId>muskit-spring-boot-starter-concurrency</artifactId>
                 <version>${project.version}</version>
             </dependency>

@@ -11,7 +11,8 @@ Muskit 是面向 Java 21 及以上版本的通用工程能力组件库。各项�
 - Java 21，不使用 preview API。
 - Spring Boot 4.x，以根 `pom.xml` 中的版本为准。
 - Maven 多模块工程，始终优先使用 Maven Wrapper。
-- groupId 为 `io.github.muskit`，版本由根项目统一管理。
+- groupId 为 `io.github.zhanghslq`，版本由根项目统一管理。
+- Java 基础包名为 `io.github.zhanghslq.muskit`。
 
 ## 开始修改前
 
@@ -107,7 +108,7 @@ starter -> autoconfigure -> core
 涉及发布配置、公共 API 或 Javadoc 时额外执行：
 
 ```shell
-./mvnw -B -ntp -Prelease clean verify
+./mvnw -B -ntp -Prelease "-Dgpg.skip=true" clean verify
 ```
 
 Windows PowerShell 使用对应的 `mvnw.cmd`。不得仅用跳过测试的构建作为完成依据。
@@ -121,4 +122,3 @@ Windows PowerShell 使用对应的 `mvnw.cmd`。不得仅用跳过测试的构�
 - 行为变化有自动化测试保护，相关测试和全量构建通过。
 - 配置、公共 API 或使用方式发生变化时，README 和相关文档已经同步。
 - 最终说明列出修改内容、验证命令和结果，以及仍未覆盖的限制；不得声称未执行的测试已经通过。
-

@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         child.project.url.inherit.append.path="false"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.github.muskit</groupId>
+    <groupId>io.github.zhanghslq</groupId>
     <artifactId>muskit-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Muskit Parent</name>
     <description>面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工具箱</description>
-    <url>https://github.com/muskit/muskit</url>
+    <url>https://github.com/zhanghslq/muskit</url>
 
     <licenses>
         <license>
@@ -20,6 +21,32 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
+    <developers>
+        <developer>
+            <id>zhanghslq</id>
+            <name>zhs</name>
+            <email>zhanghslq@163.com</email>
+            <url>https://github.com/zhanghslq</url>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <scm child.scm.connection.inherit.append.path="false"
+         child.scm.developerConnection.inherit.append.path="false"
+         child.scm.url.inherit.append.path="false">
+        <connection>scm:git:https://github.com/zhanghslq/muskit.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/zhanghslq/muskit.git</developerConnection>
+        <tag>HEAD</tag>
+        <url>https://github.com/zhanghslq/muskit</url>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/zhanghslq/muskit/issues</url>
+    </issueManagement>
 
     <properties>
         <java.version>21</java.version>
@@ -36,6 +63,9 @@
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
         <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
         <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+        <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
+        <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
+        <central.skipPublishing>false</central.skipPublishing>
     </properties>
 
     <modules>
@@ -176,6 +206,36 @@
                                 </goals>
                             </execution>
                         </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven-gpg-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <bestPractices>true</bestPractices>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${central-publishing-maven-plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>false</autoPublish>
+                            <skipPublishing>${central.skipPublishing}</skipPublishing>
+                            <waitUntil>validated</waitUntil>
+                            <excludeArtifacts>muskit-example</excludeArtifacts>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>

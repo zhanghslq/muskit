@@ -31,7 +31,7 @@ Muskit 是面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工�
 <dependencyManagement>
     <dependencies>
         <dependency>
-            <groupId>io.github.muskit</groupId>
+            <groupId>io.github.zhanghslq</groupId>
             <artifactId>muskit-bom</artifactId>
             <version>0.1.0-SNAPSHOT</version>
             <type>pom</type>
@@ -46,11 +46,11 @@ Muskit 是面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工�
 ```xml
 <dependencies>
     <dependency>
-        <groupId>io.github.muskit</groupId>
+        <groupId>io.github.zhanghslq</groupId>
         <artifactId>muskit-spring-boot-starter-context</artifactId>
     </dependency>
     <dependency>
-        <groupId>io.github.muskit</groupId>
+        <groupId>io.github.zhanghslq</groupId>
         <artifactId>muskit-spring-boot-starter-concurrency</artifactId>
     </dependency>
 </dependencies>
@@ -149,9 +149,32 @@ public String export(String tenantId) {
 - `0.4.x`：RabbitMQ、HTTP 幂等、分布式并发控制
 - `0.5.x`：限流、SingleFlight、Deadline
 
-## 发布前事项
+## 发布到 Maven Central
 
-当前使用的 Maven 坐标为 `io.github.muskit`。正式发布 Maven Central 前，需要确认该 GitHub 组织或域名所有权；如果实际仓库归属不同，应在第一个公开版本前统一修改 groupId、Java 包名和项目 URL。
+项目发布坐标为 `io.github.zhanghslq`，Java 包名以 `io.github.zhanghslq.muskit` 开头。发布元数据指向 GitHub 仓库，并包含 Apache License 2.0、开发者和 SCM 信息。
+
+首次发布前需要完成：
+
+1. 使用 GitHub 账号登录 [Central Publisher Portal](https://central.sonatype.com/)，确认 `io.github.zhanghslq` namespace 已验证。
+2. 在 Portal 创建 User Token，并在 Maven `settings.xml` 中配置 ID 为 `central` 的 server。
+3. 创建并公开 GPG 公钥，确保本机 `gpg-agent` 可用于签名。
+4. 将项目版本从 `SNAPSHOT` 调整为未发布过的正式版本，然后执行发布命令。
+
+```xml
+<server>
+    <id>central</id>
+    <username>${env.MAVEN_CENTRAL_USERNAME}</username>
+    <password>${env.MAVEN_CENTRAL_PASSWORD}</password>
+</server>
+```
+
+发布前通过安全的环境变量或 CI Secret 注入 Portal Token 与 `MAVEN_GPG_PASSPHRASE`，不要把凭据或私钥提交到仓库。
+
+```shell
+./mvnw -B -ntp -Prelease clean deploy
+```
+
+`release` profile 会为可发布模块生成源码包和 Javadoc 包、使用 GPG 签名，并通过 Central Publishing Maven Plugin 上传；`muskit-example` 仅作为 Git 仓库中的示例项目，不发布到 Maven Central。配置默认关闭自动发布，Portal 校验通过后仍需人工确认 Publish。
 
 ## License
 
