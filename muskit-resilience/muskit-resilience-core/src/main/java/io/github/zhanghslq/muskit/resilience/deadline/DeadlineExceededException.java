@@ -14,4 +14,13 @@ public class DeadlineExceededException extends RuntimeException {
     public DeadlineExceededException() {
         super("调用 Deadline 已到期");
     }
+
+    /**
+     * 创建保留最近业务失败原因的 Deadline 超时异常。
+     *
+     * @param cause 最近一次业务失败
+     */
+    public DeadlineExceededException(Throwable cause) {
+        super("剩余 Deadline 不足以执行下一次重试", cause);
+    }
 }

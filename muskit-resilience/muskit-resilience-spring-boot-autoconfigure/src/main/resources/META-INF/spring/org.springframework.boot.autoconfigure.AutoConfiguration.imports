@@ -1,1 +1,4 @@
+io.github.zhanghslq.muskit.resilience.autoconfigure.MuskitResilienceRedisAutoConfiguration
+io.github.zhanghslq.muskit.resilience.autoconfigure.MuskitCircuitBreakerResilience4jAutoConfiguration
+io.github.zhanghslq.muskit.resilience.autoconfigure.MuskitCircuitBreakerAutoConfiguration
 io.github.zhanghslq.muskit.resilience.autoconfigure.MuskitResilienceAutoConfiguration

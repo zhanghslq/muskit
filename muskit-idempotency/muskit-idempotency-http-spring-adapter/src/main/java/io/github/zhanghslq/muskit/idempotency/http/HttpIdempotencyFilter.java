@@ -2,7 +2,11 @@ package io.github.zhanghslq.muskit.idempotency.http;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntPredicate;
 
@@ -10,6 +14,7 @@ import io.github.zhanghslq.muskit.idempotency.IdempotencyAttempt;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyClaim;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyDecision;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyRequest;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyResult;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
 import jakarta.servlet.AsyncEvent;
 import jakarta.servlet.AsyncListener;
@@ -27,6 +32,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public final class HttpIdempotencyFilter extends OncePerRequestFilter {
 
+    private static final int DEFAULT_MAX_RESPONSE_BODY_BYTES = 65_536;
+    private static final Set<String> DEFAULT_REPLAY_HEADERS = Set.of("Location", "ETag");
+
     /** 默认 HTTP 幂等键请求头。 */
     public static final String IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
 
@@ -39,6 +47,9 @@ public final class HttpIdempotencyFilter extends OncePerRequestFilter {
     private final Duration processingTimeout;
     private final Duration retention;
     private final IntPredicate successStatus;
+    private final int maxResponseBodyBytes;
+    private final Set<String> replayHeaderNames;
+    private final java.util.function.Predicate<String> replayableContentType;
 
     /**
      * 使用固定操作名称和 Idempotency-Key 请求头创建 HTTP 幂等 Filter。
@@ -59,7 +70,10 @@ public final class HttpIdempotencyFilter extends OncePerRequestFilter {
                 request -> request.getHeader(IDEMPOTENCY_KEY_HEADER),
                 processingTimeout,
                 retention,
-                status -> status >= 200 && status < 400);
+                status -> status >= 200 && status < 400,
+                DEFAULT_MAX_RESPONSE_BODY_BYTES,
+                DEFAULT_REPLAY_HEADERS,
+                HttpIdempotencyFilter::isDefaultReplayableContentType);
     }
 
     /**
@@ -79,12 +93,55 @@ public final class HttpIdempotencyFilter extends OncePerRequestFilter {
             Duration processingTimeout,
             Duration retention,
             IntPredicate successStatus) {
+        this(
+                store,
+                operationResolver,
+                keyResolver,
+                processingTimeout,
+                retention,
+                successStatus,
+                DEFAULT_MAX_RESPONSE_BODY_BYTES,
+                DEFAULT_REPLAY_HEADERS,
+                HttpIdempotencyFilter::isDefaultReplayableContentType);
+    }
+
+    /**
+     * 使用完整响应缓存边界创建 HTTP 幂等 Filter。
+     *
+     * @param store 幂等状态存储
+     * @param operationResolver 低基数操作名称解析策略
+     * @param keyResolver 业务幂等键解析策略
+     * @param processingTimeout 请求处理超时时间
+     * @param retention 成功状态保留时间
+     * @param successStatus 判断响应是否成功的状态码策略
+     * @param maxResponseBodyBytes 最大缓存响应体字节数
+     * @param replayHeaderNames 允许重放的响应头白名单
+     * @param replayableContentType 允许缓存的 Content-Type 判定器
+     */
+    public HttpIdempotencyFilter(
+            IdempotencyStore store,
+            HttpIdempotencyOperationResolver operationResolver,
+            HttpIdempotencyKeyResolver keyResolver,
+            Duration processingTimeout,
+            Duration retention,
+            IntPredicate successStatus,
+            int maxResponseBodyBytes,
+            Set<String> replayHeaderNames,
+            java.util.function.Predicate<String> replayableContentType) {
         this.store = Objects.requireNonNull(store, "幂等状态存储不能为空");
         this.operationResolver = Objects.requireNonNull(operationResolver, "HTTP 幂等操作解析策略不能为空");
         this.keyResolver = Objects.requireNonNull(keyResolver, "HTTP 幂等键解析策略不能为空");
         this.processingTimeout = Objects.requireNonNull(processingTimeout, "HTTP 处理超时时间不能为空");
         this.retention = Objects.requireNonNull(retention, "HTTP 成功状态保留时间不能为空");
         this.successStatus = Objects.requireNonNull(successStatus, "HTTP 成功状态判断策略不能为空");
+        if (maxResponseBodyBytes <= 0 || maxResponseBodyBytes > 16_777_216) {
+            throw new IllegalArgumentException("HTTP 幂等响应体上限必须在 1 到 16777216 字节之间");
+        }
+        this.maxResponseBodyBytes = maxResponseBodyBytes;
+        Objects.requireNonNull(replayHeaderNames, "HTTP 幂等响应头白名单不能为空");
+        this.replayHeaderNames = Set.copyOf(new LinkedHashSet<>(replayHeaderNames));
+        this.replayableContentType = Objects.requireNonNull(
+                replayableContentType, "HTTP 幂等内容类型判定器不能为空");
     }
 
     /**
@@ -112,8 +169,9 @@ public final class HttpIdempotencyFilter extends OncePerRequestFilter {
             return;
         }
 
-        IdempotencyAttempt attempt = store.tryStart(new IdempotencyRequest(
-                operation, key, processingTimeout, retention));
+        IdempotencyRequest idempotencyRequest = new IdempotencyRequest(
+                operation, key, processingTimeout, retention);
+        IdempotencyAttempt attempt = store.tryStart(idempotencyRequest);
         if (attempt.decision() == IdempotencyDecision.IN_PROGRESS) {
             response.setStatus(HttpServletResponse.SC_CONFLICT);
             response.setHeader(IDEMPOTENCY_STATUS_HEADER, "in-progress");
@@ -121,16 +179,23 @@ public final class HttpIdempotencyFilter extends OncePerRequestFilter {
             return;
         }
         if (attempt.decision() == IdempotencyDecision.COMPLETED) {
-            response.setStatus(HttpServletResponse.SC_CONFLICT);
-            response.setHeader(IDEMPOTENCY_STATUS_HEADER, "completed");
+            Optional<IdempotencyResult> completedResult = store.findCompletedResult(idempotencyRequest);
+            if (completedResult.isPresent()) {
+                replay(response, completedResult.orElseThrow());
+            } else {
+                response.setStatus(HttpServletResponse.SC_CONFLICT);
+                response.setHeader(IDEMPOTENCY_STATUS_HEADER, "completed-not-replayable");
+            }
             return;
         }
         IdempotencyClaim claim = attempt.claim().orElseThrow(
                 () -> new IllegalStateException("幂等存储未返回 HTTP 请求所有权"));
-        RequestCompletion completion = new RequestCompletion(claim, response);
+        ReplayCaptureResponseWrapper captureResponse = new ReplayCaptureResponseWrapper(
+                response, maxResponseBodyBytes, replayHeaderNames, replayableContentType);
+        RequestCompletion completion = new RequestCompletion(claim, captureResponse);
 
         try {
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(request, captureResponse);
             if (request.isAsyncStarted()) {
                 // 初始 Filter 线程返回不代表异步 Servlet 请求完成，由 AsyncListener 持有状态所有权。
                 request.getAsyncContext().addListener(completion);
@@ -144,6 +209,39 @@ public final class HttpIdempotencyFilter extends OncePerRequestFilter {
     }
 
     /**
+     * 将已完成请求的原始状态、白名单响应头和响应体写回客户端。
+     *
+     * @param response 当前 HTTP 响应
+     * @param result 已持久化结果
+     * @throws IOException 写出响应体失败
+     */
+    private void replay(HttpServletResponse response, IdempotencyResult result) throws IOException {
+        response.setStatus(result.statusCode());
+        if (!result.contentType().isBlank()) {
+            response.setContentType(result.contentType());
+        }
+        result.headers().forEach(response::setHeader);
+        response.setHeader(IDEMPOTENCY_STATUS_HEADER, "replayed");
+        byte[] body = result.body();
+        response.setContentLength(body.length);
+        response.getOutputStream().write(body);
+    }
+
+    /**
+     * 判断默认允许缓存 JSON 或空响应体使用的内容类型。
+     *
+     * @param contentType 响应内容类型
+     * @return 是否允许缓存
+     */
+    private static boolean isDefaultReplayableContentType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return true;
+        }
+        String normalized = contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
+        return normalized.equals("application/json") || normalized.endsWith("+json");
+    }
+
+    /**
      * HTTP 请求幂等状态完成器，确保异步回调和异常路径只完成一次。
      *
      * @author zhs
@@ -152,7 +250,7 @@ public final class HttpIdempotencyFilter extends OncePerRequestFilter {
     private final class RequestCompletion implements AsyncListener {
 
         private final IdempotencyClaim claim;
-        private final HttpServletResponse response;
+        private final ReplayCaptureResponseWrapper response;
         private final AtomicBoolean finished = new AtomicBoolean();
 
         /**
@@ -161,7 +259,7 @@ public final class HttpIdempotencyFilter extends OncePerRequestFilter {
          * @param claim 幂等所有权声明
          * @param response HTTP 响应
          */
-        private RequestCompletion(IdempotencyClaim claim, HttpServletResponse response) {
+        private RequestCompletion(IdempotencyClaim claim, ReplayCaptureResponseWrapper response) {
             this.claim = claim;
             this.response = response;
         }
@@ -214,7 +312,14 @@ public final class HttpIdempotencyFilter extends OncePerRequestFilter {
                 return;
             }
             if (successStatus.test(response.getStatus())) {
-                store.complete(claim);
+                Optional<IdempotencyResult> result = response.snapshot();
+                if (result.isPresent()) {
+                    store.complete(claim, result.orElseThrow());
+                    response.setHeader(IDEMPOTENCY_STATUS_HEADER, "stored");
+                } else {
+                    store.complete(claim);
+                    response.setHeader(IDEMPOTENCY_STATUS_HEADER, "completed-not-replayable");
+                }
             } else {
                 store.release(claim);
             }

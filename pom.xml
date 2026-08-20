@@ -57,6 +57,7 @@
 
         <spring-boot.version>4.1.0</spring-boot.version>
         <redisson.version>4.6.1</redisson.version>
+        <resilience4j.version>2.4.0</resilience4j.version>
         <testcontainers.version>2.0.5</testcontainers.version>
         <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
@@ -95,8 +96,17 @@
         <module>muskit-idempotency/muskit-idempotency-rabbit-adapter</module>
         <module>muskit-idempotency/muskit-idempotency-http-spring-adapter</module>
         <module>muskit-resilience/muskit-resilience-core</module>
+        <module>muskit-resilience/muskit-resilience-redis-adapter</module>
+        <module>muskit-resilience/muskit-resilience4j-adapter</module>
         <module>muskit-resilience/muskit-resilience-spring-boot-autoconfigure</module>
         <module>muskit-resilience/muskit-spring-boot-starter-resilience</module>
+        <module>muskit-resilience/muskit-spring-boot-starter-resilience-redis</module>
+        <module>muskit-resilience/muskit-spring-boot-starter-resilience4j</module>
+        <module>muskit-outbox/muskit-outbox-core</module>
+        <module>muskit-outbox/muskit-outbox-jdbc-adapter</module>
+        <module>muskit-outbox/muskit-outbox-kafka-adapter</module>
+        <module>muskit-outbox/muskit-outbox-spring-boot-autoconfigure</module>
+        <module>muskit-outbox/muskit-spring-boot-starter-outbox</module>
         <module>examples/muskit-example</module>
     </modules>
 
@@ -123,6 +133,11 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-junit-jupiter</artifactId>
                 <version>${testcontainers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-circuitbreaker</artifactId>
+                <version>${resilience4j.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -1,0 +1,3 @@
+io.github.zhanghslq.muskit.outbox.autoconfigure.MuskitOutboxJdbcAutoConfiguration
+io.github.zhanghslq.muskit.outbox.autoconfigure.MuskitOutboxKafkaAutoConfiguration
+io.github.zhanghslq.muskit.outbox.autoconfigure.MuskitOutboxAutoConfiguration

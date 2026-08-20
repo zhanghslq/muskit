@@ -1,12 +1,17 @@
 package io.github.zhanghslq.muskit.idempotency.http;
 
 import java.time.Duration;
+import java.util.Map;
+import java.util.Optional;
 
 import io.github.zhanghslq.muskit.idempotency.IdempotencyAttempt;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyClaim;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyDecision;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyResult;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockAsyncContext;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -15,6 +20,7 @@ import org.springframework.mock.web.MockFilterChain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -42,10 +48,20 @@ class HttpIdempotencyFilterTest {
         MockHttpServletRequest request = request("request-1");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        filter(store).doFilter(request, response, (currentRequest, currentResponse) ->
-                ((MockHttpServletResponse) currentResponse).setStatus(201));
+        filter(store).doFilter(request, response, (currentRequest, currentResponse) -> {
+            HttpServletResponse httpResponse = (HttpServletResponse) currentResponse;
+            httpResponse.setStatus(201);
+            httpResponse.setContentType("application/json");
+            httpResponse.setHeader("Location", "/orders/42");
+            httpResponse.getWriter().write("{\"orderId\":42}");
+        });
 
-        verify(store).complete(claim());
+        ArgumentCaptor<IdempotencyResult> result = ArgumentCaptor.forClass(IdempotencyResult.class);
+        verify(store).complete(eq(claim()), result.capture());
+        assertThat(result.getValue().statusCode()).isEqualTo(201);
+        assertThat(result.getValue().headers()).containsEntry("Location", "/orders/42");
+        assertThat(new String(result.getValue().body(), java.nio.charset.StandardCharsets.UTF_8))
+                .isEqualTo("{\"orderId\":42}");
         assertThat(response.getStatus()).isEqualTo(201);
     }
 
@@ -60,7 +76,7 @@ class HttpIdempotencyFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter(store).doFilter(request("request-1"), response, (currentRequest, currentResponse) ->
-                ((MockHttpServletResponse) currentResponse).setStatus(500));
+                ((HttpServletResponse) currentResponse).setStatus(500));
 
         verify(store).release(claim());
     }
@@ -78,14 +94,17 @@ class HttpIdempotencyFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter(store).doFilter(request, response, (currentRequest, currentResponse) -> {
-            ((MockHttpServletResponse) currentResponse).setStatus(202);
+            HttpServletResponse httpResponse = (HttpServletResponse) currentResponse;
+            httpResponse.setStatus(202);
+            httpResponse.setContentType("application/json");
+            httpResponse.getWriter().write("{}");
             currentRequest.startAsync();
         });
-        verify(store, never()).complete(any());
+        verify(store, never()).complete(any(), any());
 
         ((MockAsyncContext) request.getAsyncContext()).complete();
 
-        verify(store).complete(claim());
+        verify(store).complete(eq(claim()), any(IdempotencyResult.class));
     }
 
     /**
@@ -111,8 +130,58 @@ class HttpIdempotencyFilterTest {
                 .isEqualTo("in-progress");
         assertThat(completed.getStatus()).isEqualTo(409);
         assertThat(completed.getHeader(HttpIdempotencyFilter.IDEMPOTENCY_STATUS_HEADER))
-                .isEqualTo("completed");
+                .isEqualTo("completed-not-replayable");
         assertThat(chain.getRequest()).isNull();
+    }
+
+    /**
+     * 验证已完成请求直接重放原始状态、白名单响应头和响应体。
+     *
+     * @throws Exception Filter 执行异常
+     */
+    @Test
+    void shouldReplayCompletedResponseWithoutCallingBusinessChain() throws Exception {
+        IdempotencyStore store = mock(IdempotencyStore.class);
+        when(store.tryStart(any())).thenReturn(IdempotencyAttempt.rejected(IdempotencyDecision.COMPLETED));
+        when(store.findCompletedResult(any())).thenReturn(Optional.of(new IdempotencyResult(
+                201,
+                "application/json",
+                Map.of("Location", "/orders/42"),
+                "{\"orderId\":42}".getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter(store).doFilter(request("request-1"), response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(201);
+        assertThat(response.getContentType()).isEqualTo("application/json");
+        assertThat(response.getHeader("Location")).isEqualTo("/orders/42");
+        assertThat(response.getHeader(HttpIdempotencyFilter.IDEMPOTENCY_STATUS_HEADER)).isEqualTo("replayed");
+        assertThat(response.getContentAsString()).isEqualTo("{\"orderId\":42}");
+        assertThat(chain.getRequest()).isNull();
+    }
+
+    /**
+     * 验证不可缓存的内容类型只提交完成状态，不保存响应内容。
+     *
+     * @throws Exception Filter 执行异常
+     */
+    @Test
+    void shouldNotCacheDisallowedContentType() throws Exception {
+        IdempotencyStore store = acquiredStore();
+
+        filter(store).doFilter(
+                request("request-1"),
+                new MockHttpServletResponse(),
+                (currentRequest, currentResponse) -> {
+                    HttpServletResponse httpResponse = (HttpServletResponse) currentResponse;
+                    httpResponse.setStatus(200);
+                    httpResponse.setContentType("application/octet-stream");
+                    httpResponse.getOutputStream().write(new byte[] {1, 2, 3});
+                });
+
+        verify(store).complete(claim());
+        verify(store, never()).complete(any(), any());
     }
 
     /**

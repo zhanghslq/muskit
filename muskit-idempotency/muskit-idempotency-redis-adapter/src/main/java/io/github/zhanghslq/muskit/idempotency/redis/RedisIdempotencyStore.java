@@ -4,9 +4,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HexFormat;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import io.github.zhanghslq.muskit.idempotency.IdempotencyAttempt;
@@ -14,6 +16,8 @@ import io.github.zhanghslq.muskit.idempotency.IdempotencyClaim;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyDecision;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyOwnershipLostException;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyRequest;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyResult;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyResultCodec;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyStoreException;
 import org.redisson.api.RScript;
@@ -46,10 +50,22 @@ public final class RedisIdempotencyStore implements IdempotencyStore {
                     and redis.call('hget', KEYS[1], 'owner') == ARGV[1] then
                 redis.call('hset', KEYS[1], 'status', 'COMPLETED')
                 redis.call('hdel', KEYS[1], 'owner')
+                if ARGV[3] == '' then
+                    redis.call('hdel', KEYS[1], 'result')
+                else
+                    redis.call('hset', KEYS[1], 'result', ARGV[3])
+                end
                 redis.call('pexpire', KEYS[1], ARGV[2])
                 return 1
             end
             return 0
+            """;
+
+    private static final String FIND_RESULT_SCRIPT = """
+            if redis.call('hget', KEYS[1], 'status') == 'COMPLETED' then
+                return redis.call('hget', KEYS[1], 'result')
+            end
+            return nil
             """;
 
     private static final String RELEASE_SCRIPT = """
@@ -125,7 +141,8 @@ public final class RedisIdempotencyStore implements IdempotencyStore {
                     RScript.ReturnType.LONG,
                     Collections.singletonList(redisKey(claim.operation(), claim.key())),
                     claim.ownerToken(),
-                    toRedisMillis(claim.retention()));
+                    toRedisMillis(claim.retention()),
+                    "");
             if (result.intValue() != 1) {
                 throw new IdempotencyOwnershipLostException(claim.operation());
             }
@@ -133,6 +150,61 @@ public final class RedisIdempotencyStore implements IdempotencyStore {
             throw exception;
         } catch (RuntimeException exception) {
             throw new IdempotencyStoreException(claim.operation(), exception);
+        }
+    }
+
+    /**
+     * 原子将当前所有者的处理中记录转换为成功状态并保存可重放结果。
+     *
+     * @param claim 幂等所有权声明
+     * @param result 可重放结果
+     */
+    @Override
+    public void complete(IdempotencyClaim claim, IdempotencyResult result) {
+        Objects.requireNonNull(claim, "幂等所有权声明不能为空");
+        Objects.requireNonNull(result, "可重放结果不能为空");
+        String encoded = Base64.getEncoder().encodeToString(IdempotencyResultCodec.encode(result));
+        try {
+            Number completed = script.eval(
+                    RScript.Mode.READ_WRITE,
+                    COMPLETE_SCRIPT,
+                    RScript.ReturnType.LONG,
+                    Collections.singletonList(redisKey(claim.operation(), claim.key())),
+                    claim.ownerToken(),
+                    toRedisMillis(claim.retention()),
+                    encoded);
+            if (completed.intValue() != 1) {
+                throw new IdempotencyOwnershipLostException(claim.operation());
+            }
+        } catch (IdempotencyOwnershipLostException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new IdempotencyStoreException(claim.operation(), exception);
+        }
+    }
+
+    /**
+     * 读取已经完成请求的可重放结果。
+     *
+     * @param request 幂等请求
+     * @return 可重放结果，不存在时返回空
+     */
+    @Override
+    public Optional<IdempotencyResult> findCompletedResult(IdempotencyRequest request) {
+        Objects.requireNonNull(request, "幂等请求不能为空");
+        try {
+            Object encoded = script.eval(
+                    RScript.Mode.READ_ONLY,
+                    FIND_RESULT_SCRIPT,
+                    RScript.ReturnType.STRING,
+                    Collections.singletonList(redisKey(request.operation(), request.key())));
+            if (encoded == null) {
+                return Optional.empty();
+            }
+            byte[] bytes = Base64.getDecoder().decode(encoded.toString());
+            return Optional.of(IdempotencyResultCodec.decode(bytes));
+        } catch (RuntimeException exception) {
+            throw new IdempotencyStoreException(request.operation(), exception);
         }
     }
 

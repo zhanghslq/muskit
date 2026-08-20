@@ -8,6 +8,12 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  datasource:
+    url: jdbc:h2:mem:muskit;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
 muskit:
   context:
@@ -30,9 +36,33 @@ muskit:
     redis-key-prefix: "muskit:idempotency:"
   resilience:
     rate-limit-enabled: true
+    rate-limit-provider: redis
+    redis-rate-limit-key-prefix: "muskit:rate-limit:"
     rate-limit-policies:
       order-submit:
         capacity: 5
         refill-tokens: 5
         refill-period: 1s
         scope: key
+    retry-policies:
+      remote-payment:
+        max-attempts: 3
+        initial-delay: 100ms
+        multiplier: 2
+        max-delay: 1s
+        jitter: 0.2
+    circuit-breaker-policies:
+      remote-payment:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 5
+        sliding-window-size: 20
+        wait-duration-in-open-state: 30s
+  outbox:
+    enabled: true
+    initialize-schema: true
+    require-transaction: true
+    batch-size: 100
+    lease-time: 30s
+    retry-delay: 5s
+    poll-interval: 1s
+    published-retention: 7d

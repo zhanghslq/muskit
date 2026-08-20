@@ -1,12 +1,16 @@
 package io.github.zhanghslq.muskit.idempotency.redis;
 
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 import io.github.zhanghslq.muskit.idempotency.IdempotencyClaim;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyDecision;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyOwnershipLostException;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyRequest;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyResult;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyResultCodec;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.redisson.api.RScript;
@@ -98,6 +102,38 @@ class RedisIdempotencyStoreTest {
                 .hasMessageContaining("payment")
                 .hasMessageNotContaining("key")
                 .hasMessageNotContaining("owner");
+    }
+
+    /**
+     * 验证可重放结果会编码写入 Redis 并可以解码读取。
+     */
+    @Test
+    void shouldStoreAndLoadReplayableResult() {
+        Fixture fixture = fixture();
+        IdempotencyResult expected = new IdempotencyResult(
+                200, "application/json", Map.of("ETag", "v1"), new byte[] {1, 2, 3});
+        doReturn(1L).when(fixture.script()).eval(
+                eq(RScript.Mode.READ_WRITE),
+                anyString(),
+                eq(RScript.ReturnType.LONG),
+                anyList(),
+                any(Object[].class));
+        doReturn(Base64.getEncoder().encodeToString(IdempotencyResultCodec.encode(expected)))
+                .when(fixture.script()).eval(
+                        eq(RScript.Mode.READ_ONLY),
+                        anyString(),
+                        eq(RScript.ReturnType.STRING),
+                        anyList(),
+                        any(Object[].class));
+        IdempotencyClaim claim = new IdempotencyClaim(
+                "payment", "key", "owner", Duration.ofHours(1));
+
+        fixture.store().complete(claim, expected);
+
+        IdempotencyResult loaded = fixture.store().findCompletedResult(request("key")).orElseThrow();
+        assertThat(loaded.statusCode()).isEqualTo(200);
+        assertThat(loaded.headers()).containsEntry("ETag", "v1");
+        assertThat(loaded.body()).containsExactly(1, 2, 3);
     }
 
     /**

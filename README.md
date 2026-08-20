@@ -34,8 +34,16 @@ Muskit 是面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工�
 | `muskit-idempotency-kafka-adapter` | 以 topic/partition/offset 为键的 Kafka 消费幂等拦截器 |
 | `muskit-idempotency-rabbit-adapter` | RabbitListener Advice Chain 消息幂等拦截器 |
 | `muskit-idempotency-http-spring-adapter` | 支持同步和异步 Servlet 生命周期的 HTTP 幂等 Filter |
-| `muskit-resilience-core` | 本地令牌桶、SingleFlight、Deadline 作用域和 SPI |
-| `muskit-spring-boot-starter-resilience` | `@RateLimitGuard` 和限流策略自动配置 |
+| `muskit-resilience-core` | 限流、Retry、Circuit Breaker、SingleFlight、Deadline 的公共 API 与 SPI |
+| `muskit-resilience-redis-adapter` | 使用 Redis TIME 和 Lua 原子脚本实现的跨实例令牌桶 |
+| `muskit-resilience4j-adapter` | 基于 Resilience4j 的 Circuit Breaker Provider |
+| `muskit-spring-boot-starter-resilience` | 本地限流、`@RetryGuard` 与 Deadline 协作能力 |
+| `muskit-spring-boot-starter-resilience-redis` | Redis 强依赖的分布式限流 Starter |
+| `muskit-spring-boot-starter-resilience4j` | `@CircuitBreakerGuard` 和 Resilience4j Provider Starter |
+| `muskit-outbox-core` | Transactional Outbox 事件、事务存储和发布 SPI |
+| `muskit-outbox-jdbc-adapter` | 使用条件更新和有期限租约的 JDBC Outbox 存储 |
+| `muskit-outbox-kafka-adapter` | 等待 broker 确认的 Kafka Outbox 发布器 |
+| `muskit-spring-boot-starter-outbox` | JDBC + Kafka Transactional Outbox 自动配置与后台轮询 |
 | `muskit-test-support` | 基于虚拟线程的并发测试辅助工具 |
 
 ## 引入依赖
@@ -79,6 +87,14 @@ Muskit 是面向 Java 21+ 与 Spring Boot 的服务可靠性和并发治理工�
     <dependency>
         <groupId>io.github.zhanghslq</groupId>
         <artifactId>muskit-spring-boot-starter-resilience</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-resilience4j</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.github.zhanghslq</groupId>
+        <artifactId>muskit-spring-boot-starter-outbox</artifactId>
     </dependency>
 </dependencies>
 ```
@@ -263,7 +279,9 @@ public CompletionStage<Order> create(OrderRequest request) {
 
 - Kafka：将 `KafkaIdempotencyRecordInterceptor` 配置到 Listener Container。它使用 topic、partition、offset 组合键；成功时完成状态，监听器失败时释放状态，已完成记录返回 `null` 跳过处理。
 - RabbitMQ：将 `RabbitIdempotencyAdvice` 加入 Listener Container Factory 的 Advice Chain。默认要求生产者设置稳定 `messageId`，也可以提供 `RabbitMessageKeyResolver`；当前不支持批量监听器。
-- HTTP：按需要保护的 URL 注册 `HttpIdempotencyFilter`。默认从 `Idempotency-Key` 请求头读取键，支持自定义操作解析、键解析和成功状态码策略，也会等待异步 Servlet 请求真实完成。缺少键返回 `400`；处理中与已完成请求都返回 `409`，并通过 `Idempotency-Status` 区分。当前实现不缓存或重放历史响应体。
+- HTTP：按需要保护的 URL 注册 `HttpIdempotencyFilter`。默认从 `Idempotency-Key` 请求头读取键，也会等待异步 Servlet 请求真实完成。缺少键返回 `400`，处理中返回 `409`。成功响应默认缓存不超过 64 KiB 的 JSON/空响应，以及白名单中的 `Location`、`ETag` 响应头；完成态重复请求会原样重放并返回 `Idempotency-Status: replayed`。响应体超过上限或内容类型不允许时仍提交完成状态，重复请求返回 `409` 和 `completed-not-replayable`，不会悄悄重新执行业务。
+
+HTTP 响应回放要求底层 Store 支持结果存储。Redis Store 已直接支持；JDBC Store 的表新增了可空 `result_data BLOB` 列。已有数据库必须先通过迁移工具增加该列，`initialize-schema` 只负责创建新表，不会修改已有表结构。完整构造器允许调整最大响应字节数、响应头白名单和可回放 Content-Type 策略。
 
 ## 限流、SingleFlight 和 Deadline
 
@@ -273,6 +291,7 @@ public CompletionStage<Order> create(OrderRequest request) {
 muskit:
   resilience:
     rate-limit-enabled: true
+    rate-limit-provider: local
     max-local-buckets: 100000
     local-bucket-idle-retention: 10m
     rate-limit-policies:
@@ -292,6 +311,78 @@ public String invoke(String tenantId) {
 
 本地令牌桶使用单调时钟连续补充令牌，并通过最大桶数量与空闲清理限制按 Key 隔离的内存占用；它只保证单 JVM 限流。令牌不足时抛出 `RateLimitRejectedException`，异常携带策略名称和建议等待时间，不携带业务 Key。应用可以提供自己的 `RateLimiter` Bean 替换默认实现。
 
+多实例共享限流配额时改用 `muskit-spring-boot-starter-resilience-redis`：
+
+```yaml
+muskit:
+  resilience:
+    rate-limit-provider: redis
+    redis-rate-limit-key-prefix: "muskit:rate-limit:"
+    rate-limit-policies:
+      tenant-api:
+        capacity: 100
+        refill-tokens: 50
+        refill-period: 1s
+        scope: key
+```
+
+Redis Provider 以 Redis 服务端时间为准，通过 Lua 原子完成补充、判断和扣减；业务 Key 只以 SHA-256 摘要进入 Redis Key。显式选择 `redis` 但缺少 `RedissonClient` 时应用启动失败，Redis 异常时抛出 `RateLimitBackendException`，不会降级到单 JVM 限流。
+
+### Retry 与 Deadline
+
+```yaml
+muskit:
+  resilience:
+    retry-enabled: true
+    retry-policies:
+      remote-payment:
+        max-attempts: 3
+        initial-delay: 100ms
+        multiplier: 2
+        max-delay: 1s
+        jitter: 0.2
+        retry-on:
+          - java.io.IOException
+        abort-on:
+          - java.lang.IllegalArgumentException
+```
+
+```java
+@RetryGuard(policy = "remote-payment")
+public CompletionStage<PaymentResult> pay() {
+    return paymentGateway.pay();
+}
+```
+
+Retry 支持同步方法和 `CompletionStage`，使用有上限的指数退避和随机抖动；中断时恢复线程中断标记并停止重试。存在 `DeadlineContext` 时，每次重试都传播当前 Deadline，若剩余预算不足以容纳下一次等待则直接抛出 `DeadlineExceededException`，不会启动注定超时的新尝试。
+
+### Circuit Breaker
+
+引入 `muskit-spring-boot-starter-resilience4j` 后按策略使用 `@CircuitBreakerGuard`：
+
+```yaml
+muskit:
+  resilience:
+    circuit-breaker-policies:
+      remote-payment:
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 80
+        slow-call-duration-threshold: 2s
+        minimum-number-of-calls: 10
+        sliding-window-size: 100
+        permitted-calls-in-half-open: 5
+        wait-duration-in-open-state: 30s
+```
+
+```java
+@CircuitBreakerGuard(policy = "remote-payment")
+public CompletionStage<PaymentResult> pay() {
+    return paymentGateway.pay();
+}
+```
+
+Provider 支持关闭、开启、半开状态以及失败率和慢调用率判定；`CompletionStage` 只有在异步任务真实完成后才记录结果。策略名用于低基数隔离，业务 Key 不参与熔断器命名。
+
 `SingleFlight<K, V>` 将同一业务键当前并发的同步或异步动作合并为一次真实执行。每个调用方获得独立结果视图，单个调用方取消不会取消共享任务；成功或失败后占位都会清理，后续请求可以重新执行。
 
 ```java
@@ -307,6 +398,38 @@ try (DeadlineContext.Scope ignored = DeadlineContext.open(Deadline.after(Duratio
     executor.execute(DeadlineContext.wrap(task));
 }
 ```
+
+## Transactional Outbox
+
+`muskit-spring-boot-starter-outbox` 用于把业务数据库变更与待发布事件写入同一个本地事务，再由后台轮询器至少一次发布到 Kafka：
+
+```yaml
+muskit:
+  outbox:
+    enabled: true
+    table-name: muskit_outbox
+    initialize-schema: false
+    require-transaction: true
+    batch-size: 100
+    lease-time: 30s
+    retry-delay: 5s
+    poll-interval: 1s
+    published-retention: 7d
+```
+
+```java
+@Transactional
+public UUID createOrder(Order order) {
+    orderRepository.save(order);
+    return outboxService.publish(new OutboxMessageRequest(
+            "orders",
+            order.id(),
+            serializer.serialize(order),
+            Map.of("event-type", "order-created")));
+}
+```
+
+默认 `require-transaction=true`，脱离活动数据库事务写入会明确失败。JDBC Store 通过条件更新竞争有期限租约，Kafka Publisher 等待 broker 确认后才标记 `PUBLISHED`；若 Kafka 已成功而数据库确认失败，事件会再次投递，因此消费者仍必须幂等。生产环境应通过 Flyway/Liquibase 创建表并关闭 `initialize-schema`；自动建表只适合本地开发与测试。轮询器可用 `scheduler-enabled=false` 关闭，随后由应用自行调用 `OutboxDispatchService.dispatchBatch()`。
 
 ## 构建
 
@@ -332,6 +455,7 @@ try (DeadlineContext.Scope ignored = DeadlineContext.open(Deadline.after(Duratio
 - `0.3.x`：幂等状态机、JDBC/Redis 存储、Kafka 消费适配
 - `0.4.x`：RabbitMQ、HTTP 幂等、Redis 分布式并发控制
 - `0.5.x`：令牌桶限流、SingleFlight、Deadline
+- `0.6.x`：Redis 分布式限流、HTTP 响应回放、Retry、Circuit Breaker、Transactional Outbox
 
 ## 发布到 Maven Central
 

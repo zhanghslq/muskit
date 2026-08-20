@@ -1,12 +1,15 @@
 package io.github.zhanghslq.muskit.test.idempotency;
 
 import java.time.Duration;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.UUID;
 
 import io.github.zhanghslq.muskit.idempotency.IdempotencyAttempt;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyClaim;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyDecision;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyRequest;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyResult;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
 import org.junit.jupiter.api.Test;
 
@@ -66,6 +69,28 @@ public abstract class IdempotencyStoreContract {
         firstStore().release(claim);
 
         assertEquals(IdempotencyDecision.ACQUIRED, secondStore().tryStart(request).decision());
+    }
+
+    /**
+     * 验证一个实例保存的可重放结果可以被另一个实例读取。
+     */
+    @Test
+    void shouldShareCompletedResultAcrossInstances() {
+        IdempotencyRequest request = request("result");
+        IdempotencyClaim claim = firstStore().tryStart(request).claim().orElseThrow();
+        IdempotencyResult result = new IdempotencyResult(
+                201,
+                "application/json",
+                Map.of("Location", "/orders/42"),
+                "{\"orderId\":42}".getBytes(StandardCharsets.UTF_8));
+
+        firstStore().complete(claim, result);
+
+        IdempotencyResult loaded = secondStore().findCompletedResult(request).orElseThrow();
+        assertEquals(result.statusCode(), loaded.statusCode());
+        assertEquals(result.contentType(), loaded.contentType());
+        assertEquals(result.headers(), loaded.headers());
+        assertEquals("{\"orderId\":42}", new String(loaded.body(), StandardCharsets.UTF_8));
     }
 
     /**

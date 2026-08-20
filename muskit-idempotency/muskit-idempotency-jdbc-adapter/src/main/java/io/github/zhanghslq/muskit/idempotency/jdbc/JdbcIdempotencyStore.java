@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -13,6 +14,8 @@ import io.github.zhanghslq.muskit.idempotency.IdempotencyClaim;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyDecision;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyOwnershipLostException;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyRequest;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyResult;
+import io.github.zhanghslq.muskit.idempotency.IdempotencyResultCodec;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
 import io.github.zhanghslq.muskit.idempotency.IdempotencyStoreException;
 import org.springframework.dao.DuplicateKeyException;
@@ -73,6 +76,7 @@ public final class JdbcIdempotencyStore implements IdempotencyStore {
                     + "status VARCHAR(16) NOT NULL, "
                     + "processing_expires_at TIMESTAMP(6), "
                     + "retention_expires_at TIMESTAMP(6), "
+                    + "result_data BLOB, "
                     + "PRIMARY KEY (operation_name, idempotency_key))");
         } catch (RuntimeException exception) {
             throw new IdempotencyStoreException("schema-initialization", exception);
@@ -131,7 +135,7 @@ public final class JdbcIdempotencyStore implements IdempotencyStore {
         try {
             int updated = jdbcOperations.update(
                     "UPDATE " + tableName + " SET status = ?, owner_token = NULL, "
-                            + "processing_expires_at = NULL, retention_expires_at = ? "
+                            + "processing_expires_at = NULL, retention_expires_at = ?, result_data = NULL "
                             + "WHERE operation_name = ? AND idempotency_key = ? AND status = ? AND owner_token = ? "
                             + "AND processing_expires_at > ?",
                     COMPLETED,
@@ -148,6 +152,68 @@ public final class JdbcIdempotencyStore implements IdempotencyStore {
             throw exception;
         } catch (RuntimeException exception) {
             throw new IdempotencyStoreException(claim.operation(), exception);
+        }
+    }
+
+    /**
+     * 仅由当前所有者将处理中记录转换为成功状态并原子保存可重放结果。
+     *
+     * @param claim 幂等所有权声明
+     * @param result 可重放结果
+     */
+    @Override
+    public void complete(IdempotencyClaim claim, IdempotencyResult result) {
+        Objects.requireNonNull(claim, "幂等所有权声明不能为空");
+        Objects.requireNonNull(result, "可重放结果不能为空");
+        try {
+            int updated = jdbcOperations.update(
+                    "UPDATE " + tableName + " SET status = ?, owner_token = NULL, "
+                            + "processing_expires_at = NULL, retention_expires_at = ?, result_data = ? "
+                            + "WHERE operation_name = ? AND idempotency_key = ? AND status = ? AND owner_token = ? "
+                            + "AND processing_expires_at > ?",
+                    COMPLETED,
+                    Timestamp.from(clock.instant().plus(claim.retention())),
+                    IdempotencyResultCodec.encode(result),
+                    claim.operation(),
+                    claim.key(),
+                    PROCESSING,
+                    claim.ownerToken(),
+                    Timestamp.from(clock.instant()));
+            if (updated != 1) {
+                throw new IdempotencyOwnershipLostException(claim.operation());
+            }
+        } catch (IdempotencyOwnershipLostException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new IdempotencyStoreException(claim.operation(), exception);
+        }
+    }
+
+    /**
+     * 读取仍在保留期内的已完成可重放结果。
+     *
+     * @param request 幂等请求
+     * @return 可重放结果，不存在时返回空
+     */
+    @Override
+    public Optional<IdempotencyResult> findCompletedResult(IdempotencyRequest request) {
+        Objects.requireNonNull(request, "幂等请求不能为空");
+        try {
+            List<byte[]> results = jdbcOperations.query(
+                    "SELECT result_data FROM " + tableName
+                            + " WHERE operation_name = ? AND idempotency_key = ? AND status = ? "
+                            + "AND retention_expires_at > ? AND result_data IS NOT NULL",
+                    (resultSet, rowNumber) -> resultSet.getBytes(1),
+                    request.operation(),
+                    request.key(),
+                    COMPLETED,
+                    Timestamp.from(clock.instant()));
+            if (results.isEmpty()) {
+                return Optional.empty();
+            }
+            return Optional.of(IdempotencyResultCodec.decode(results.getFirst()));
+        } catch (RuntimeException exception) {
+            throw new IdempotencyStoreException(request.operation(), exception);
         }
     }
 

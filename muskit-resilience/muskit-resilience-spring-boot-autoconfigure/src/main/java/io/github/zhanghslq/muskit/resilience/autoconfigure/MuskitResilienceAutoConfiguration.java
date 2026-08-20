@@ -3,6 +3,8 @@ package io.github.zhanghslq.muskit.resilience.autoconfigure;
 import io.github.zhanghslq.muskit.resilience.ratelimit.LocalTokenBucketRateLimiter;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitPolicyResolver;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimiter;
+import io.github.zhanghslq.muskit.resilience.retry.RetryExecutor;
+import io.github.zhanghslq.muskit.resilience.retry.RetryPolicyResolver;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.BeanFactory;
@@ -21,11 +23,6 @@ import org.springframework.context.annotation.Bean;
  */
 @AutoConfiguration
 @ConditionalOnClass({Aspect.class, ProceedingJoinPoint.class})
-@ConditionalOnProperty(
-        prefix = "muskit.resilience",
-        name = "rate-limit-enabled",
-        havingValue = "true",
-        matchIfMissing = true)
 @EnableConfigurationProperties(MuskitResilienceProperties.class)
 public class MuskitResilienceAutoConfiguration {
 
@@ -43,6 +40,16 @@ public class MuskitResilienceAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnProperty(
+            prefix = "muskit.resilience",
+            name = "rate-limit-enabled",
+            havingValue = "true",
+            matchIfMissing = true)
+    @ConditionalOnProperty(
+            prefix = "muskit.resilience",
+            name = "rate-limit-provider",
+            havingValue = "local",
+            matchIfMissing = true)
     public RateLimiter muskitRateLimiter(MuskitResilienceProperties properties) {
         return new LocalTokenBucketRateLimiter(
                 properties.getMaxLocalBuckets(),
@@ -57,6 +64,11 @@ public class MuskitResilienceAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnProperty(
+            prefix = "muskit.resilience",
+            name = "rate-limit-enabled",
+            havingValue = "true",
+            matchIfMissing = true)
     public RateLimitPolicyResolver muskitRateLimitPolicyResolver(MuskitResilienceProperties properties) {
         return new PropertiesRateLimitPolicyResolver(properties);
     }
@@ -72,6 +84,11 @@ public class MuskitResilienceAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnProperty(
+            prefix = "muskit.resilience",
+            name = "rate-limit-enabled",
+            havingValue = "true",
+            matchIfMissing = true)
     public RateLimitGuardAspect muskitRateLimitGuardAspect(
             RateLimiter rateLimiter,
             RateLimitPolicyResolver policyResolver,
@@ -79,5 +96,60 @@ public class MuskitResilienceAutoConfiguration {
             MuskitResilienceProperties properties) {
         return new RateLimitGuardAspect(
                 rateLimiter, policyResolver, beanFactory, properties.getRateLimitOrder());
+    }
+
+    /**
+     * 创建默认 Deadline 感知重试执行器。
+     *
+     * @return 重试执行器
+     */
+    @Bean(destroyMethod = "close")
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(
+            prefix = "muskit.resilience",
+            name = "retry-enabled",
+            havingValue = "true",
+            matchIfMissing = true)
+    public RetryExecutor muskitRetryExecutor() {
+        return new RetryExecutor();
+    }
+
+    /**
+     * 创建配置属性重试策略解析器。
+     *
+     * @param properties 韧性配置属性
+     * @return 重试策略解析器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(
+            prefix = "muskit.resilience",
+            name = "retry-enabled",
+            havingValue = "true",
+            matchIfMissing = true)
+    public RetryPolicyResolver muskitRetryPolicyResolver(MuskitResilienceProperties properties) {
+        return new PropertiesRetryPolicyResolver(properties);
+    }
+
+    /**
+     * 创建重试注解切面。
+     *
+     * @param retryExecutor 重试执行器
+     * @param policyResolver 重试策略解析器
+     * @param properties 韧性配置属性
+     * @return 重试切面
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(
+            prefix = "muskit.resilience",
+            name = "retry-enabled",
+            havingValue = "true",
+            matchIfMissing = true)
+    public RetryGuardAspect muskitRetryGuardAspect(
+            RetryExecutor retryExecutor,
+            RetryPolicyResolver policyResolver,
+            MuskitResilienceProperties properties) {
+        return new RetryGuardAspect(retryExecutor, policyResolver, properties.getRetryOrder());
     }
 }
