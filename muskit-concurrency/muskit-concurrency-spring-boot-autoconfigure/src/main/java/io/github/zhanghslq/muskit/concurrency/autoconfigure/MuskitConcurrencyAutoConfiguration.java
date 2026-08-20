@@ -38,6 +38,11 @@ public class MuskitConcurrencyAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnProperty(
+            prefix = "muskit.concurrency",
+            name = "provider",
+            havingValue = "local",
+            matchIfMissing = true)
     public ConcurrencyLimiter muskitConcurrencyLimiter() {
         return new LocalConcurrencyLimiter();
     }

@@ -44,6 +44,11 @@
             </dependency>
             <dependency>
                 <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-concurrency-redis-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
                 <artifactId>muskit-concurrency-spring-boot-autoconfigure</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -52,7 +57,91 @@
                 <artifactId>muskit-spring-boot-starter-concurrency</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-spring-boot-starter-concurrency-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-lock-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-lock-redis-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-lock-spring-boot-autoconfigure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-spring-boot-starter-lock</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-idempotency-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-idempotency-jdbc-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-idempotency-redis-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-idempotency-spring-boot-autoconfigure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-spring-boot-starter-idempotency-jdbc</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-spring-boot-starter-idempotency-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-idempotency-kafka-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-idempotency-rabbit-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-idempotency-http-spring-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-resilience-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-resilience-spring-boot-autoconfigure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.zhanghslq</groupId>
+                <artifactId>muskit-spring-boot-starter-resilience</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>
-

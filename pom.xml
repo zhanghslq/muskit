@@ -56,6 +56,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <spring-boot.version>4.1.0</spring-boot.version>
+        <redisson.version>4.6.1</redisson.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
         <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
@@ -75,8 +77,26 @@
         <module>muskit-context/muskit-context-spring-boot-autoconfigure</module>
         <module>muskit-context/muskit-spring-boot-starter-context</module>
         <module>muskit-concurrency/muskit-concurrency-core</module>
+        <module>muskit-concurrency/muskit-concurrency-redis-adapter</module>
         <module>muskit-concurrency/muskit-concurrency-spring-boot-autoconfigure</module>
         <module>muskit-concurrency/muskit-spring-boot-starter-concurrency</module>
+        <module>muskit-concurrency/muskit-spring-boot-starter-concurrency-redis</module>
+        <module>muskit-lock/muskit-lock-core</module>
+        <module>muskit-lock/muskit-lock-redis-adapter</module>
+        <module>muskit-lock/muskit-lock-spring-boot-autoconfigure</module>
+        <module>muskit-lock/muskit-spring-boot-starter-lock</module>
+        <module>muskit-idempotency/muskit-idempotency-core</module>
+        <module>muskit-idempotency/muskit-idempotency-jdbc-adapter</module>
+        <module>muskit-idempotency/muskit-idempotency-redis-adapter</module>
+        <module>muskit-idempotency/muskit-idempotency-spring-boot-autoconfigure</module>
+        <module>muskit-idempotency/muskit-spring-boot-starter-idempotency-jdbc</module>
+        <module>muskit-idempotency/muskit-spring-boot-starter-idempotency-redis</module>
+        <module>muskit-idempotency/muskit-idempotency-kafka-adapter</module>
+        <module>muskit-idempotency/muskit-idempotency-rabbit-adapter</module>
+        <module>muskit-idempotency/muskit-idempotency-http-spring-adapter</module>
+        <module>muskit-resilience/muskit-resilience-core</module>
+        <module>muskit-resilience/muskit-resilience-spring-boot-autoconfigure</module>
+        <module>muskit-resilience/muskit-spring-boot-starter-resilience</module>
         <module>examples/muskit-example</module>
     </modules>
 
@@ -88,6 +108,21 @@
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-junit-jupiter</artifactId>
+                <version>${testcontainers.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

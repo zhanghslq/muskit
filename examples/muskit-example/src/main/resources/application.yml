@@ -4,6 +4,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 muskit:
   context:
@@ -17,3 +21,18 @@ muskit:
         max-wait: 200ms
         scope: key
         fair: false
+  lock:
+    enabled: true
+    key-prefix: "muskit:lock:"
+  idempotency:
+    enabled: true
+    provider: redis
+    redis-key-prefix: "muskit:idempotency:"
+  resilience:
+    rate-limit-enabled: true
+    rate-limit-policies:
+      order-submit:
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 1s
+        scope: key

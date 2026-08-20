@@ -13,5 +13,21 @@
 
     <artifactId>muskit-test-support</artifactId>
     <name>Muskit Test Support</name>
-</project>
 
+    <dependencies>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-lock-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-idempotency-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+    </dependencies>
+</project>

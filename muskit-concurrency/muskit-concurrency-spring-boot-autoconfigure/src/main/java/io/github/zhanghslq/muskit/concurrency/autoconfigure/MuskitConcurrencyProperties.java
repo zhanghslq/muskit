@@ -19,6 +19,9 @@ public class MuskitConcurrencyProperties {
 
     private boolean enabled = true;
     private int order = Ordered.HIGHEST_PRECEDENCE + 100;
+    private ConcurrencyProviderType provider = ConcurrencyProviderType.LOCAL;
+    private String redisKeyPrefix = "muskit:concurrency:";
+    private Duration redisLeaseTime = Duration.ofSeconds(30);
     private Map<String, PolicyProperties> policies = new LinkedHashMap<>();
 
     /**
@@ -61,6 +64,60 @@ public class MuskitConcurrencyProperties {
      */
     public void setOrder(int order) {
         this.order = order;
+    }
+
+    /**
+     * 返回并发额度 Provider 类型。
+     *
+     * @return Provider 类型
+     */
+    public ConcurrencyProviderType getProvider() {
+        return provider;
+    }
+
+    /**
+     * 设置并发额度 Provider 类型。
+     *
+     * @param provider Provider 类型
+     */
+    public void setProvider(ConcurrencyProviderType provider) {
+        this.provider = provider;
+    }
+
+    /**
+     * 返回 Redis 分布式额度键前缀。
+     *
+     * @return Redis 键前缀
+     */
+    public String getRedisKeyPrefix() {
+        return redisKeyPrefix;
+    }
+
+    /**
+     * 设置 Redis 分布式额度键前缀。
+     *
+     * @param redisKeyPrefix Redis 键前缀
+     */
+    public void setRedisKeyPrefix(String redisKeyPrefix) {
+        this.redisKeyPrefix = redisKeyPrefix;
+    }
+
+    /**
+     * 返回 Redis 分布式额度失联租约时间。
+     *
+     * @return Redis 额度租约
+     */
+    public Duration getRedisLeaseTime() {
+        return redisLeaseTime;
+    }
+
+    /**
+     * 设置 Redis 分布式额度失联租约时间。
+     *
+     * @param redisLeaseTime Redis 额度租约
+     */
+    public void setRedisLeaseTime(Duration redisLeaseTime) {
+        this.redisLeaseTime = redisLeaseTime;
     }
 
     /**

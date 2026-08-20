@@ -10,7 +10,11 @@ import io.github.zhanghslq.muskit.concurrency.ConcurrencyLimiter;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyPolicyResolver;
 import io.github.zhanghslq.muskit.concurrency.ConcurrencyRejectedException;
 import io.github.zhanghslq.muskit.concurrency.LocalConcurrencyLimiter;
+import io.github.zhanghslq.muskit.concurrency.redis.RedisConcurrencyLimiter;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RScript;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +23,8 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * MuskitConcurrencyAutoConfiguration 自动配置和切面集成测试。
@@ -29,7 +35,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class MuskitConcurrencyAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(MuskitConcurrencyAutoConfiguration.class))
+            .withConfiguration(AutoConfigurations.of(
+                    MuskitConcurrencyRedisAutoConfiguration.class,
+                    MuskitConcurrencyAutoConfiguration.class))
             .withUserConfiguration(TestConfiguration.class)
             .withPropertyValues(
                     "muskit.concurrency.policies.tenant-export.max-concurrency=1",
@@ -82,6 +90,32 @@ class MuskitConcurrencyAutoConfigurationTest {
         contextRunner
                 .withPropertyValues("muskit.concurrency.enabled=false")
                 .run(context -> assertThat(context).doesNotHaveBean(ConcurrencyGuardAspect.class));
+    }
+
+    /**
+     * 验证显式选择 Redis 时创建分布式 Provider 而不是本地 Provider。
+     */
+    @Test
+    void shouldConfigureRedisProviderExplicitly() {
+        RedissonClient client = mock(RedissonClient.class);
+        when(client.getScript(StringCodec.INSTANCE)).thenReturn(mock(RScript.class));
+
+        contextRunner.withBean(RedissonClient.class, () -> client)
+                .withPropertyValues("muskit.concurrency.provider=redis")
+                .run(context -> {
+                    assertThat(context).hasSingleBean(ConcurrencyLimiter.class);
+                    assertThat(context.getBean(ConcurrencyLimiter.class))
+                            .isInstanceOf(RedisConcurrencyLimiter.class);
+                });
+    }
+
+    /**
+     * 验证选择 Redis 但缺少客户端时不会静默降级为本地 Provider。
+     */
+    @Test
+    void shouldFailWhenRedisProviderHasNoClient() {
+        contextRunner.withPropertyValues("muskit.concurrency.provider=redis")
+                .run(context -> assertThat(context).hasFailed());
     }
 
     /**

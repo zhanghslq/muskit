@@ -26,6 +26,21 @@
             <artifactId>muskit-spring-boot-starter-concurrency</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-spring-boot-starter-lock</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-spring-boot-starter-idempotency-redis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.zhanghslq</groupId>
+            <artifactId>muskit-spring-boot-starter-resilience</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -38,4 +53,3 @@
         </plugins>
     </build>
 </project>
-
