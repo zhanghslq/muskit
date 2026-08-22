@@ -1,10 +1,9 @@
 package io.github.zhanghslq.muskit.cache.redis;
 
+import io.github.zhanghslq.muskit.cache.model.CacheRecord;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
-
-import io.github.zhanghslq.muskit.cache.CacheRecord;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;

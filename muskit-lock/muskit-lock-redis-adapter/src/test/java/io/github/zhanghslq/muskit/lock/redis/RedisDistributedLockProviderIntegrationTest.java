@@ -1,13 +1,12 @@
 package io.github.zhanghslq.muskit.lock.redis;
 
+import io.github.zhanghslq.muskit.lock.model.DistributedLockRequest;
+import io.github.zhanghslq.muskit.lock.spi.DistributedLockHandle;
+import io.github.zhanghslq.muskit.lock.spi.DistributedLockProvider;
+import io.github.zhanghslq.muskit.test.lock.FencedDistributedLockProviderContract;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-
-import io.github.zhanghslq.muskit.lock.DistributedLockHandle;
-import io.github.zhanghslq.muskit.lock.DistributedLockRequest;
-import io.github.zhanghslq.muskit.lock.DistributedLockProvider;
-import io.github.zhanghslq.muskit.test.lock.FencedDistributedLockProviderContract;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

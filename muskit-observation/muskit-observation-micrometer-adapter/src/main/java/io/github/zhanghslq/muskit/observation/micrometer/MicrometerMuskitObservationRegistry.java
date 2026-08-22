@@ -1,5 +1,14 @@
 package io.github.zhanghslq.muskit.observation.micrometer;
 
+import io.github.zhanghslq.muskit.observation.model.MuskitMetric;
+import io.github.zhanghslq.muskit.observation.model.MuskitMetricKind;
+import io.github.zhanghslq.muskit.observation.model.ObservationTags;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -7,16 +16,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
-
-import io.github.zhanghslq.muskit.observation.MuskitMetric;
-import io.github.zhanghslq.muskit.observation.MuskitMetricKind;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
-import io.github.zhanghslq.muskit.observation.ObservationTags;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Timer;
 
 /**
  * 将 Muskit 稳定指标目录写入 Micrometer 的适配器。

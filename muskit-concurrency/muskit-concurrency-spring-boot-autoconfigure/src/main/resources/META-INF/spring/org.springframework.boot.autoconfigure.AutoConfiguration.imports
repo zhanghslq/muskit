@@ -1,2 +1,2 @@
-io.github.zhanghslq.muskit.concurrency.autoconfigure.MuskitConcurrencyRedisAutoConfiguration
+io.github.zhanghslq.muskit.concurrency.autoconfigure.redis.MuskitConcurrencyRedisAutoConfiguration
 io.github.zhanghslq.muskit.concurrency.autoconfigure.MuskitConcurrencyAutoConfiguration

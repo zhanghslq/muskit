@@ -1,13 +1,12 @@
 package io.github.zhanghslq.muskit.idempotency.rabbit;
 
+import io.github.zhanghslq.muskit.idempotency.exception.IdempotencyInProgressException;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyAttempt;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyClaim;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyDecision;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyRequest;
+import io.github.zhanghslq.muskit.idempotency.spi.IdempotencyStore;
 import java.time.Duration;
-
-import io.github.zhanghslq.muskit.idempotency.IdempotencyAttempt;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyClaim;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyDecision;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyInProgressException;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyRequest;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
 import org.aopalliance.intercept.MethodInvocation;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

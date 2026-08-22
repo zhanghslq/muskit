@@ -1,3 +1,3 @@
 io.github.zhanghslq.muskit.lifecycle.autoconfigure.MuskitLifecycleAutoConfiguration
-io.github.zhanghslq.muskit.lifecycle.autoconfigure.MuskitLifecycleServletAutoConfiguration
-io.github.zhanghslq.muskit.lifecycle.autoconfigure.MuskitLifecycleReactiveAutoConfiguration
+io.github.zhanghslq.muskit.lifecycle.autoconfigure.servlet.MuskitLifecycleServletAutoConfiguration
+io.github.zhanghslq.muskit.lifecycle.autoconfigure.reactive.MuskitLifecycleReactiveAutoConfiguration

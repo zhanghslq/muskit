@@ -3,8 +3,8 @@ package io.github.zhanghslq.muskit.client.spring;
 import java.io.IOException;
 import java.util.Objects;
 
-import io.github.zhanghslq.muskit.client.ClientPropagation;
-import io.github.zhanghslq.muskit.client.InvalidPropagationHeaderException;
+import io.github.zhanghslq.muskit.client.exception.InvalidPropagationHeaderException;
+import io.github.zhanghslq.muskit.client.service.ClientPropagation;
 import io.github.zhanghslq.muskit.resilience.deadline.DeadlineExceededException;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;

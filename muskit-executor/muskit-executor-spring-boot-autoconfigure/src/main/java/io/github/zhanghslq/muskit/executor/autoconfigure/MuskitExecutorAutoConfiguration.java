@@ -1,12 +1,11 @@
 package io.github.zhanghslq.muskit.executor.autoconfigure;
 
+import io.github.zhanghslq.muskit.executor.model.ManagedExecutorConfig;
+import io.github.zhanghslq.muskit.executor.service.ManagedExecutorRegistry;
+import io.github.zhanghslq.muskit.executor.service.ManagedTaskExecutor;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import java.util.ArrayList;
 import java.util.List;
-
-import io.github.zhanghslq.muskit.executor.ManagedExecutorConfig;
-import io.github.zhanghslq.muskit.executor.ManagedExecutorRegistry;
-import io.github.zhanghslq.muskit.executor.ManagedTaskExecutor;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;

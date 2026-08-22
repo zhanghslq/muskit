@@ -1,11 +1,10 @@
 package io.github.zhanghslq.muskit.inbox.autoconfigure;
 
+import io.github.zhanghslq.muskit.inbox.exception.UnknownInboxPolicyException;
+import io.github.zhanghslq.muskit.inbox.model.InboxPolicy;
+import io.github.zhanghslq.muskit.inbox.spi.InboxPolicyResolver;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import io.github.zhanghslq.muskit.inbox.InboxPolicy;
-import io.github.zhanghslq.muskit.inbox.InboxPolicyResolver;
-import io.github.zhanghslq.muskit.inbox.UnknownInboxPolicyException;
 
 /**
  * 从类型安全配置中解析 Inbox 策略。

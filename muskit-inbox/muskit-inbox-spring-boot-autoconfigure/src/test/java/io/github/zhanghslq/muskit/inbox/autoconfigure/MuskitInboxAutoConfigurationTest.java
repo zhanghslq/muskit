@@ -1,11 +1,11 @@
 package io.github.zhanghslq.muskit.inbox.autoconfigure;
 
+import io.github.zhanghslq.muskit.inbox.autoconfigure.jdbc.MuskitInboxJdbcAutoConfiguration;
+import io.github.zhanghslq.muskit.inbox.service.InboxProcessor;
+import io.github.zhanghslq.muskit.inbox.service.InboxTemplate;
+import io.github.zhanghslq.muskit.inbox.spi.InboxPolicyResolver;
+import io.github.zhanghslq.muskit.inbox.spi.InboxStore;
 import javax.sql.DataSource;
-
-import io.github.zhanghslq.muskit.inbox.InboxPolicyResolver;
-import io.github.zhanghslq.muskit.inbox.InboxProcessor;
-import io.github.zhanghslq.muskit.inbox.InboxStore;
-import io.github.zhanghslq.muskit.inbox.InboxTemplate;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;

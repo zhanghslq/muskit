@@ -1,19 +1,17 @@
 package io.github.zhanghslq.muskit.audit.jdbc;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.zhanghslq.muskit.audit.exception.AuditWriteException;
+import io.github.zhanghslq.muskit.audit.model.AuditEvent;
+import io.github.zhanghslq.muskit.audit.spi.AuditWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Objects;
 import java.util.regex.Pattern;
-
 import javax.sql.DataSource;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.zhanghslq.muskit.audit.AuditEvent;
-import io.github.zhanghslq.muskit.audit.AuditWriteException;
-import io.github.zhanghslq.muskit.audit.AuditWriter;
 
 /**
  * 使用 JDBC 参数化 SQL 持久化审计事件的 Writer。

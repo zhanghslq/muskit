@@ -1,10 +1,9 @@
 package io.github.zhanghslq.muskit.lifecycle.autoconfigure;
 
+import io.github.zhanghslq.muskit.lifecycle.service.DrainController;
+import io.github.zhanghslq.muskit.lifecycle.service.DrainCoordinator;
+import io.github.zhanghslq.muskit.lifecycle.spi.Drainable;
 import java.util.List;
-
-import io.github.zhanghslq.muskit.lifecycle.DrainController;
-import io.github.zhanghslq.muskit.lifecycle.DrainCoordinator;
-import io.github.zhanghslq.muskit.lifecycle.Drainable;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;

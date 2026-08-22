@@ -1,15 +1,14 @@
 package io.github.zhanghslq.muskit.client.spring;
 
+import io.github.zhanghslq.muskit.client.service.ClientPropagation;
+import io.github.zhanghslq.muskit.observation.model.MuskitMetric;
+import io.github.zhanghslq.muskit.observation.model.MuskitTagKey;
+import io.github.zhanghslq.muskit.observation.model.ObservationTags;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
-
-import io.github.zhanghslq.muskit.client.ClientPropagation;
-import io.github.zhanghslq.muskit.observation.MuskitMetric;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
-import io.github.zhanghslq.muskit.observation.MuskitTagKey;
-import io.github.zhanghslq.muskit.observation.ObservationTags;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;

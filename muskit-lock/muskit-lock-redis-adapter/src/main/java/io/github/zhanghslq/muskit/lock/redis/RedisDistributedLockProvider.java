@@ -1,5 +1,9 @@
 package io.github.zhanghslq.muskit.lock.redis;
 
+import io.github.zhanghslq.muskit.lock.exception.DistributedLockUnavailableException;
+import io.github.zhanghslq.muskit.lock.model.DistributedLockRequest;
+import io.github.zhanghslq.muskit.lock.spi.DistributedLockHandle;
+import io.github.zhanghslq.muskit.lock.spi.DistributedLockProvider;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
@@ -9,13 +13,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-
-import io.github.zhanghslq.muskit.lock.DistributedLockHandle;
-import io.github.zhanghslq.muskit.lock.DistributedLockProvider;
-import io.github.zhanghslq.muskit.lock.DistributedLockRequest;
-import io.github.zhanghslq.muskit.lock.DistributedLockUnavailableException;
-import org.redisson.api.RFuture;
 import org.redisson.api.RAtomicLong;
+import org.redisson.api.RFuture;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 

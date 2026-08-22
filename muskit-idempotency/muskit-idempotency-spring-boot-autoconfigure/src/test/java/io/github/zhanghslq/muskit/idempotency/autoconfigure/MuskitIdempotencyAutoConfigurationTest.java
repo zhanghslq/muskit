@@ -1,8 +1,23 @@
 package io.github.zhanghslq.muskit.idempotency.autoconfigure;
 
-import io.github.zhanghslq.muskit.idempotency.*;
+import io.github.zhanghslq.muskit.idempotency.annotation.Idempotent;
+import io.github.zhanghslq.muskit.idempotency.autoconfigure.aspect.IdempotentAspect;
+import io.github.zhanghslq.muskit.idempotency.autoconfigure.jdbc.MuskitIdempotencyJdbcAutoConfiguration;
+import io.github.zhanghslq.muskit.idempotency.autoconfigure.redis.MuskitIdempotencyRedisAutoConfiguration;
+import io.github.zhanghslq.muskit.idempotency.exception.IdempotencyCompletedException;
+import io.github.zhanghslq.muskit.idempotency.exception.IdempotencyInProgressException;
+import io.github.zhanghslq.muskit.idempotency.exception.IdempotencyOwnershipLostException;
 import io.github.zhanghslq.muskit.idempotency.jdbc.JdbcIdempotencyStore;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyAttempt;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyClaim;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyDecision;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyRequest;
 import io.github.zhanghslq.muskit.idempotency.redis.RedisIdempotencyStore;
+import io.github.zhanghslq.muskit.idempotency.spi.IdempotencyStore;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
@@ -15,11 +30,6 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

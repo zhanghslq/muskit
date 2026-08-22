@@ -1,13 +1,12 @@
 package io.github.zhanghslq.muskit.concurrency.redis;
 
+import io.github.zhanghslq.muskit.concurrency.model.ConcurrencyPolicy;
+import io.github.zhanghslq.muskit.concurrency.model.ConcurrencyRequest;
+import io.github.zhanghslq.muskit.concurrency.model.ConcurrencyScope;
+import io.github.zhanghslq.muskit.concurrency.spi.ConcurrencyPermit;
+import io.github.zhanghslq.muskit.test.concurrency.DistributedConcurrencyLimiterContract;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyPermit;
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyPolicy;
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyRequest;
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyScope;
-import io.github.zhanghslq.muskit.test.concurrency.DistributedConcurrencyLimiterContract;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;

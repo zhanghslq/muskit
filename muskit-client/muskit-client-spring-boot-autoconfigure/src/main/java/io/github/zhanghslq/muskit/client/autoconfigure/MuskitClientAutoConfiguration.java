@@ -1,7 +1,7 @@
 package io.github.zhanghslq.muskit.client.autoconfigure;
 
-import io.github.zhanghslq.muskit.client.ClientPropagation;
-import io.github.zhanghslq.muskit.client.ClientPropagationPolicy;
+import io.github.zhanghslq.muskit.client.model.ClientPropagationPolicy;
+import io.github.zhanghslq.muskit.client.service.ClientPropagation;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

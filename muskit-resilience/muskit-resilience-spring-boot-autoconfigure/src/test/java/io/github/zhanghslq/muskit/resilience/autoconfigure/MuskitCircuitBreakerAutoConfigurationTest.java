@@ -1,12 +1,14 @@
 package io.github.zhanghslq.muskit.resilience.autoconfigure;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
+import io.github.zhanghslq.muskit.resilience.autoconfigure.circuitbreaker.CircuitBreakerGuardAspect;
+import io.github.zhanghslq.muskit.resilience.autoconfigure.circuitbreaker.MuskitCircuitBreakerAutoConfiguration;
+import io.github.zhanghslq.muskit.resilience.autoconfigure.circuitbreaker.MuskitCircuitBreakerResilience4jAutoConfiguration;
 import io.github.zhanghslq.muskit.resilience.circuitbreaker.CircuitBreaker;
 import io.github.zhanghslq.muskit.resilience.circuitbreaker.CircuitBreakerGuard;
 import io.github.zhanghslq.muskit.resilience.circuitbreaker.CircuitBreakerOpenException;
 import io.github.zhanghslq.muskit.resilience.circuitbreaker.resilience4j.Resilience4jCircuitBreaker;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;

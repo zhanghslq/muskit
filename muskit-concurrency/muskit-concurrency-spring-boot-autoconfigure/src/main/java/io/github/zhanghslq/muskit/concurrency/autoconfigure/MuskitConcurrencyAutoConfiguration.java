@@ -1,9 +1,10 @@
 package io.github.zhanghslq.muskit.concurrency.autoconfigure;
 
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyLimiter;
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyPolicyResolver;
-import io.github.zhanghslq.muskit.concurrency.LocalConcurrencyLimiter;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.concurrency.autoconfigure.aspect.ConcurrencyGuardAspect;
+import io.github.zhanghslq.muskit.concurrency.local.LocalConcurrencyLimiter;
+import io.github.zhanghslq.muskit.concurrency.spi.ConcurrencyLimiter;
+import io.github.zhanghslq.muskit.concurrency.spi.ConcurrencyPolicyResolver;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.BeanFactory;

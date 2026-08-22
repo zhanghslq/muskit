@@ -1,9 +1,15 @@
 package io.github.zhanghslq.muskit.lock.autoconfigure;
 
-import io.github.zhanghslq.muskit.lock.DistributedLockProvider;
-import io.github.zhanghslq.muskit.lock.LocalDistributedLockProvider;
+import io.github.zhanghslq.muskit.lock.autoconfigure.aspect.DistributedLockAspect;
+import io.github.zhanghslq.muskit.lock.autoconfigure.fallback.RedisFailureFallbackLockProvider;
+import io.github.zhanghslq.muskit.lock.autoconfigure.observation.LockObservation;
+import io.github.zhanghslq.muskit.lock.autoconfigure.observation.MicrometerLockObservation;
+import io.github.zhanghslq.muskit.lock.autoconfigure.observation.NoOpLockObservation;
+import io.github.zhanghslq.muskit.lock.autoconfigure.observation.UnifiedLockObservation;
+import io.github.zhanghslq.muskit.lock.local.LocalDistributedLockProvider;
 import io.github.zhanghslq.muskit.lock.redis.RedisDistributedLockProvider;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.lock.spi.DistributedLockProvider;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;

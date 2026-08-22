@@ -1,12 +1,14 @@
 package io.github.zhanghslq.muskit.audit.autoconfigure;
 
+import io.github.zhanghslq.muskit.audit.autoconfigure.aspect.AuditOperationAspect;
+import io.github.zhanghslq.muskit.audit.autoconfigure.failure.LoggingAuditFailureListener;
+import io.github.zhanghslq.muskit.audit.autoconfigure.jdbc.MuskitAuditJdbcAutoConfiguration;
+import io.github.zhanghslq.muskit.audit.service.AuditRecorder;
+import io.github.zhanghslq.muskit.audit.spi.AuditFailureListener;
+import io.github.zhanghslq.muskit.audit.spi.AuditPrincipalProvider;
+import io.github.zhanghslq.muskit.audit.spi.AuditWriter;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import java.util.Optional;
-
-import io.github.zhanghslq.muskit.audit.AuditFailureListener;
-import io.github.zhanghslq.muskit.audit.AuditPrincipalProvider;
-import io.github.zhanghslq.muskit.audit.AuditRecorder;
-import io.github.zhanghslq.muskit.audit.AuditWriter;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;

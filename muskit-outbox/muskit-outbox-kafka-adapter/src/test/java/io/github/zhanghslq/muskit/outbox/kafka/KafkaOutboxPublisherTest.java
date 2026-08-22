@@ -1,12 +1,11 @@
 package io.github.zhanghslq.muskit.outbox.kafka;
 
+import io.github.zhanghslq.muskit.outbox.model.OutboxEvent;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-
-import io.github.zhanghslq.muskit.outbox.OutboxEvent;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

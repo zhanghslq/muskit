@@ -18,6 +18,7 @@
 - 新建类添加 `@author zhs` 和创建日期对应的 `@since`。
 - 新增或修改行为时同步增加单元测试、契约测试或集成测试。
 - core 模块不得引入 Spring Boot 或具体基础设施客户端。
+- 子模块内部按功能和职责拆包，遵循 [`docs/architecture/package-layout.md`](docs/architecture/package-layout.md)，不要把注解、模型、SPI、异常和执行器堆在模块根包。
 
 ## 新增 Provider
 

@@ -1,13 +1,12 @@
 package io.github.zhanghslq.muskit.client.spring;
 
-import java.time.Duration;
-import java.util.Map;
-
-import io.github.zhanghslq.muskit.client.ClientPropagation;
-import io.github.zhanghslq.muskit.client.ClientPropagationPolicy;
+import io.github.zhanghslq.muskit.client.model.ClientPropagationPolicy;
+import io.github.zhanghslq.muskit.client.service.ClientPropagation;
 import io.github.zhanghslq.muskit.context.MuskitContext;
 import io.github.zhanghslq.muskit.context.MuskitContextHolder;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
+import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

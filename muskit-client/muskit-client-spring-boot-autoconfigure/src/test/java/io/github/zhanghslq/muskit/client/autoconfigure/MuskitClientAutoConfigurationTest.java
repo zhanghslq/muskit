@@ -1,7 +1,7 @@
 package io.github.zhanghslq.muskit.client.autoconfigure;
 
-import io.github.zhanghslq.muskit.client.ClientPropagation;
-import io.github.zhanghslq.muskit.client.ClientPropagationPolicy;
+import io.github.zhanghslq.muskit.client.model.ClientPropagationPolicy;
+import io.github.zhanghslq.muskit.client.service.ClientPropagation;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;

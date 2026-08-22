@@ -1,9 +1,8 @@
 package io.github.zhanghslq.muskit.idempotency.jdbc;
 
-import java.util.UUID;
-
-import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
+import io.github.zhanghslq.muskit.idempotency.spi.IdempotencyStore;
 import io.github.zhanghslq.muskit.test.idempotency.IdempotencyStoreContract;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 

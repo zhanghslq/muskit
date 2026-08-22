@@ -53,6 +53,7 @@ Transactional Outbox 同样遵守该方向：`muskit-outbox-core` 只定义事�
 ## 公共 API
 
 - 公共 API 以 Java 21 为基线，但不使用 preview API。
+- Maven 子模块内部继续按 annotation、model、spi、exception、service、context、local 或具体适配能力拆包，详细约定见 [`package-layout.md`](package-layout.md)。
 - 配置中的时间统一使用 `Duration`。
 - 资源句柄实现 `AutoCloseable`，释放操作必须幂等。
 - 异常类型携带低基数策略信息，不保存敏感业务 Key。

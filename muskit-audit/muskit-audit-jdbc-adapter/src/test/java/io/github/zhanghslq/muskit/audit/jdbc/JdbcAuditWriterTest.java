@@ -1,15 +1,13 @@
 package io.github.zhanghslq.muskit.audit.jdbc;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.zhanghslq.muskit.audit.model.AuditEvent;
+import io.github.zhanghslq.muskit.audit.model.AuditOutcome;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.time.Instant;
 import java.util.Map;
-
 import javax.sql.DataSource;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.zhanghslq.muskit.audit.AuditEvent;
-import io.github.zhanghslq.muskit.audit.AuditOutcome;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

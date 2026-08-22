@@ -1,7 +1,8 @@
 package io.github.zhanghslq.muskit.observation.autoconfigure;
 
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.observation.autoconfigure.endpoint.MuskitEndpoint;
 import io.github.zhanghslq.muskit.observation.micrometer.MicrometerMuskitObservationRegistry;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;

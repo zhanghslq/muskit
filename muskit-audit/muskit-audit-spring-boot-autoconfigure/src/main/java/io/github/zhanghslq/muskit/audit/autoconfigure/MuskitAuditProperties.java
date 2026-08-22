@@ -1,6 +1,6 @@
 package io.github.zhanghslq.muskit.audit.autoconfigure;
 
-import io.github.zhanghslq.muskit.audit.AuditFailureMode;
+import io.github.zhanghslq.muskit.audit.model.AuditFailureMode;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**

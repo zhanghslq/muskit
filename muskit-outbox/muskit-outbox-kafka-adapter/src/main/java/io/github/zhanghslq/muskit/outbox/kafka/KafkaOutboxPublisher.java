@@ -1,12 +1,11 @@
 package io.github.zhanghslq.muskit.outbox.kafka;
 
+import io.github.zhanghslq.muskit.outbox.model.OutboxEvent;
+import io.github.zhanghslq.muskit.outbox.spi.OutboxPublisher;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
-
-import io.github.zhanghslq.muskit.outbox.OutboxEvent;
-import io.github.zhanghslq.muskit.outbox.OutboxPublisher;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;
 

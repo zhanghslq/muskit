@@ -1,15 +1,14 @@
 package io.github.zhanghslq.muskit.inbox.jdbc;
 
+import io.github.zhanghslq.muskit.inbox.model.InboxDecision;
+import io.github.zhanghslq.muskit.inbox.model.InboxRequest;
+import io.github.zhanghslq.muskit.inbox.spi.InboxStore;
+import io.github.zhanghslq.muskit.test.inbox.InboxStoreContract;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
-
-import io.github.zhanghslq.muskit.inbox.InboxDecision;
-import io.github.zhanghslq.muskit.inbox.InboxRequest;
-import io.github.zhanghslq.muskit.inbox.InboxStore;
-import io.github.zhanghslq.muskit.test.inbox.InboxStoreContract;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;

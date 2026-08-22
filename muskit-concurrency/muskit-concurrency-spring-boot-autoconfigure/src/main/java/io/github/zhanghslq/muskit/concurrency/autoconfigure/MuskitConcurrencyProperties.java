@@ -1,10 +1,9 @@
 package io.github.zhanghslq.muskit.concurrency.autoconfigure;
 
+import io.github.zhanghslq.muskit.concurrency.model.ConcurrencyScope;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyScope;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.core.Ordered;
 

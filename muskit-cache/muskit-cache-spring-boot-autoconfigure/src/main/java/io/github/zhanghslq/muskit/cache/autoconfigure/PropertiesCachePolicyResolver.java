@@ -1,11 +1,10 @@
 package io.github.zhanghslq.muskit.cache.autoconfigure;
 
+import io.github.zhanghslq.muskit.cache.exception.UnknownCachePolicyException;
+import io.github.zhanghslq.muskit.cache.model.CachePolicy;
+import io.github.zhanghslq.muskit.cache.spi.CachePolicyResolver;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import io.github.zhanghslq.muskit.cache.CachePolicy;
-import io.github.zhanghslq.muskit.cache.CachePolicyResolver;
-import io.github.zhanghslq.muskit.cache.UnknownCachePolicyException;
 
 /**
  * 从类型安全配置中解析缓存策略。

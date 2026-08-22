@@ -1,21 +1,25 @@
 package io.github.zhanghslq.muskit.lock.autoconfigure;
 
+import io.github.zhanghslq.muskit.lock.annotation.DistributedLock;
+import io.github.zhanghslq.muskit.lock.autoconfigure.aspect.DistributedLockAspect;
+import io.github.zhanghslq.muskit.lock.autoconfigure.fallback.RedisFailureFallbackLockProvider;
+import io.github.zhanghslq.muskit.lock.autoconfigure.observation.LockObservation;
+import io.github.zhanghslq.muskit.lock.autoconfigure.observation.MicrometerLockObservation;
+import io.github.zhanghslq.muskit.lock.autoconfigure.observation.NoOpLockObservation;
+import io.github.zhanghslq.muskit.lock.exception.DistributedLockInterruptedException;
+import io.github.zhanghslq.muskit.lock.exception.DistributedLockRejectedException;
+import io.github.zhanghslq.muskit.lock.exception.DistributedLockUnavailableException;
+import io.github.zhanghslq.muskit.lock.local.LocalDistributedLockProvider;
+import io.github.zhanghslq.muskit.lock.model.DistributedLockRequest;
+import io.github.zhanghslq.muskit.lock.spi.DistributedLockHandle;
+import io.github.zhanghslq.muskit.lock.spi.DistributedLockProvider;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.github.zhanghslq.muskit.lock.DistributedLock;
-import io.github.zhanghslq.muskit.lock.DistributedLockHandle;
-import io.github.zhanghslq.muskit.lock.DistributedLockInterruptedException;
-import io.github.zhanghslq.muskit.lock.DistributedLockProvider;
-import io.github.zhanghslq.muskit.lock.DistributedLockRejectedException;
-import io.github.zhanghslq.muskit.lock.DistributedLockRequest;
-import io.github.zhanghslq.muskit.lock.DistributedLockUnavailableException;
-import io.github.zhanghslq.muskit.lock.LocalDistributedLockProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.redisson.api.RedissonClient;

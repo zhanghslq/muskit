@@ -1,11 +1,10 @@
 package io.github.zhanghslq.muskit.observation.micrometer;
 
-import java.time.Duration;
-
-import io.github.zhanghslq.muskit.observation.MuskitMetric;
-import io.github.zhanghslq.muskit.observation.MuskitTagKey;
-import io.github.zhanghslq.muskit.observation.ObservationTags;
+import io.github.zhanghslq.muskit.observation.model.MuskitMetric;
+import io.github.zhanghslq.muskit.observation.model.MuskitTagKey;
+import io.github.zhanghslq.muskit.observation.model.ObservationTags;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

@@ -1,5 +1,10 @@
 package io.github.zhanghslq.muskit.idempotency.http;
 
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyResult;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -10,12 +15,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
-
-import io.github.zhanghslq.muskit.idempotency.IdempotencyResult;
-import jakarta.servlet.ServletOutputStream;
-import jakarta.servlet.WriteListener;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpServletResponseWrapper;
 
 /**
  * 将响应继续写给客户端的同时，有界捕获可安全重放的响应内容。

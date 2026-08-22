@@ -1,21 +1,24 @@
 package io.github.zhanghslq.muskit.idempotency.autoconfigure;
 
-import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyTemplate;
+import io.github.zhanghslq.muskit.idempotency.autoconfigure.aspect.IdempotentAspect;
+import io.github.zhanghslq.muskit.idempotency.autoconfigure.jdbc.MuskitIdempotencyJdbcAutoConfiguration;
+import io.github.zhanghslq.muskit.idempotency.autoconfigure.redis.MuskitIdempotencyRedisAutoConfiguration;
+import io.github.zhanghslq.muskit.idempotency.service.IdempotencyTemplate;
+import io.github.zhanghslq.muskit.idempotency.spi.IdempotencyStore;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.beans.factory.annotation.Qualifier;
 
 /**
  * Muskit 幂等切面自动配置。

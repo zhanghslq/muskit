@@ -1,5 +1,9 @@
 package io.github.zhanghslq.muskit.outbox.jdbc;
 
+import io.github.zhanghslq.muskit.outbox.model.OutboxClaim;
+import io.github.zhanghslq.muskit.outbox.model.OutboxEvent;
+import io.github.zhanghslq.muskit.outbox.spi.OutboxRepository;
+import io.github.zhanghslq.muskit.test.outbox.OutboxRepositoryContract;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -8,11 +12,6 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import io.github.zhanghslq.muskit.outbox.OutboxClaim;
-import io.github.zhanghslq.muskit.outbox.OutboxEvent;
-import io.github.zhanghslq.muskit.outbox.OutboxRepository;
-import io.github.zhanghslq.muskit.test.outbox.OutboxRepositoryContract;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;

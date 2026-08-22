@@ -1,10 +1,9 @@
 package io.github.zhanghslq.muskit.executor.autoconfigure;
 
+import io.github.zhanghslq.muskit.executor.model.ExecutorType;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import io.github.zhanghslq.muskit.executor.ExecutorType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**

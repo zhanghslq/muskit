@@ -1,11 +1,12 @@
 package io.github.zhanghslq.muskit.cache.autoconfigure;
 
-import io.github.zhanghslq.muskit.cache.CachePolicyResolver;
-import io.github.zhanghslq.muskit.cache.CacheStore;
-import io.github.zhanghslq.muskit.cache.CacheTemplate;
-import io.github.zhanghslq.muskit.cache.ReliableCache;
-import io.github.zhanghslq.muskit.executor.ManagedExecutorRegistry;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.cache.autoconfigure.redis.MuskitCacheRedisAutoConfiguration;
+import io.github.zhanghslq.muskit.cache.service.CacheTemplate;
+import io.github.zhanghslq.muskit.cache.service.ReliableCache;
+import io.github.zhanghslq.muskit.cache.spi.CachePolicyResolver;
+import io.github.zhanghslq.muskit.cache.spi.CacheStore;
+import io.github.zhanghslq.muskit.executor.service.ManagedExecutorRegistry;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

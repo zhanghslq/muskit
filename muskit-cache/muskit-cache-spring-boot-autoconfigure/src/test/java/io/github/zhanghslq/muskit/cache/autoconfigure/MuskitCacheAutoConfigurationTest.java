@@ -1,18 +1,17 @@
 package io.github.zhanghslq.muskit.cache.autoconfigure;
 
+import io.github.zhanghslq.muskit.cache.model.CacheRecord;
+import io.github.zhanghslq.muskit.cache.service.CacheTemplate;
+import io.github.zhanghslq.muskit.cache.service.ReliableCache;
+import io.github.zhanghslq.muskit.cache.spi.CachePolicyResolver;
+import io.github.zhanghslq.muskit.cache.spi.CacheStore;
+import io.github.zhanghslq.muskit.executor.model.ExecutorType;
+import io.github.zhanghslq.muskit.executor.model.ManagedExecutorConfig;
+import io.github.zhanghslq.muskit.executor.service.ManagedExecutorRegistry;
+import io.github.zhanghslq.muskit.executor.service.ManagedTaskExecutor;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-
-import io.github.zhanghslq.muskit.cache.CachePolicyResolver;
-import io.github.zhanghslq.muskit.cache.CacheRecord;
-import io.github.zhanghslq.muskit.cache.CacheStore;
-import io.github.zhanghslq.muskit.cache.CacheTemplate;
-import io.github.zhanghslq.muskit.cache.ReliableCache;
-import io.github.zhanghslq.muskit.executor.ExecutorType;
-import io.github.zhanghslq.muskit.executor.ManagedExecutorConfig;
-import io.github.zhanghslq.muskit.executor.ManagedExecutorRegistry;
-import io.github.zhanghslq.muskit.executor.ManagedTaskExecutor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;

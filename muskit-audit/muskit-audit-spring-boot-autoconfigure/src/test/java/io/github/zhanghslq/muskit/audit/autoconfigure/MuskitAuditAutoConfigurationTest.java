@@ -1,8 +1,8 @@
 package io.github.zhanghslq.muskit.audit.autoconfigure;
 
-import io.github.zhanghslq.muskit.audit.AuditPrincipalProvider;
-import io.github.zhanghslq.muskit.audit.AuditRecorder;
-import io.github.zhanghslq.muskit.audit.AuditWriter;
+import io.github.zhanghslq.muskit.audit.service.AuditRecorder;
+import io.github.zhanghslq.muskit.audit.spi.AuditPrincipalProvider;
+import io.github.zhanghslq.muskit.audit.spi.AuditWriter;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;

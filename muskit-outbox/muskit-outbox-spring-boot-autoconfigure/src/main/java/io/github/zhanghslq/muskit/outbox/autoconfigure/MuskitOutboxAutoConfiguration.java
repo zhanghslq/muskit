@@ -1,12 +1,15 @@
 package io.github.zhanghslq.muskit.outbox.autoconfigure;
 
-import io.github.zhanghslq.muskit.outbox.OutboxDispatchService;
-import io.github.zhanghslq.muskit.outbox.OutboxDeadLetterSink;
-import io.github.zhanghslq.muskit.outbox.OutboxPublisher;
-import io.github.zhanghslq.muskit.outbox.OutboxRepository;
-import io.github.zhanghslq.muskit.outbox.OutboxRetryPolicy;
-import io.github.zhanghslq.muskit.outbox.OutboxService;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.outbox.autoconfigure.jdbc.MuskitOutboxJdbcAutoConfiguration;
+import io.github.zhanghslq.muskit.outbox.autoconfigure.kafka.MuskitOutboxKafkaAutoConfiguration;
+import io.github.zhanghslq.muskit.outbox.autoconfigure.scheduling.OutboxPollingLifecycle;
+import io.github.zhanghslq.muskit.outbox.model.OutboxRetryPolicy;
+import io.github.zhanghslq.muskit.outbox.service.OutboxDispatchService;
+import io.github.zhanghslq.muskit.outbox.service.OutboxService;
+import io.github.zhanghslq.muskit.outbox.spi.OutboxDeadLetterSink;
+import io.github.zhanghslq.muskit.outbox.spi.OutboxPublisher;
+import io.github.zhanghslq.muskit.outbox.spi.OutboxRepository;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

@@ -1,5 +1,8 @@
 package io.github.zhanghslq.muskit.resilience.autoconfigure;
 
+import io.github.zhanghslq.muskit.resilience.autoconfigure.ratelimit.MuskitResilienceRedisAutoConfiguration;
+import io.github.zhanghslq.muskit.resilience.autoconfigure.ratelimit.RateLimitGuardAspect;
+import io.github.zhanghslq.muskit.resilience.autoconfigure.retry.RetryGuardAspect;
 import io.github.zhanghslq.muskit.resilience.ratelimit.LocalTokenBucketRateLimiter;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitDecision;
 import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitGuard;

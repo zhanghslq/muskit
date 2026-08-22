@@ -1,7 +1,7 @@
 package io.github.zhanghslq.muskit.executor.autoconfigure;
 
-import io.github.zhanghslq.muskit.executor.ExecutorType;
-import io.github.zhanghslq.muskit.executor.ManagedExecutorRegistry;
+import io.github.zhanghslq.muskit.executor.model.ExecutorType;
+import io.github.zhanghslq.muskit.executor.service.ManagedExecutorRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 

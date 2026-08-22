@@ -1,5 +1,7 @@
 package io.github.zhanghslq.muskit.context.autoconfigure;
 
+import io.github.zhanghslq.muskit.context.autoconfigure.propagation.MuskitContextAccessorRegistrar;
+import io.github.zhanghslq.muskit.context.autoconfigure.propagation.MuskitContextThreadLocalAccessor;
 import io.micrometer.context.ContextRegistry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;

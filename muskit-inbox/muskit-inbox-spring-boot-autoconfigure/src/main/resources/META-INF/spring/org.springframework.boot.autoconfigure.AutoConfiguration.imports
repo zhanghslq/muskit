@@ -1,2 +1,2 @@
-io.github.zhanghslq.muskit.inbox.autoconfigure.MuskitInboxJdbcAutoConfiguration
+io.github.zhanghslq.muskit.inbox.autoconfigure.jdbc.MuskitInboxJdbcAutoConfiguration
 io.github.zhanghslq.muskit.inbox.autoconfigure.MuskitInboxAutoConfiguration

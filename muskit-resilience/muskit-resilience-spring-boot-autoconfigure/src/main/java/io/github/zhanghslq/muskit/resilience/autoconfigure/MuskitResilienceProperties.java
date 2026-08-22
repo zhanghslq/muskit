@@ -1,12 +1,12 @@
 package io.github.zhanghslq.muskit.resilience.autoconfigure;
 
+import io.github.zhanghslq.muskit.resilience.autoconfigure.ratelimit.RateLimitProviderType;
+import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitScope;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-
-import io.github.zhanghslq.muskit.resilience.ratelimit.RateLimitScope;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.core.Ordered;
 

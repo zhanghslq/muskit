@@ -1,5 +1,13 @@
 package io.github.zhanghslq.muskit.inbox.jdbc;
 
+import io.github.zhanghslq.muskit.inbox.exception.InboxOwnershipLostException;
+import io.github.zhanghslq.muskit.inbox.exception.InboxStoreException;
+import io.github.zhanghslq.muskit.inbox.model.InboxAttempt;
+import io.github.zhanghslq.muskit.inbox.model.InboxClaim;
+import io.github.zhanghslq.muskit.inbox.model.InboxDecision;
+import io.github.zhanghslq.muskit.inbox.model.InboxRequest;
+import io.github.zhanghslq.muskit.inbox.model.InboxStatus;
+import io.github.zhanghslq.muskit.inbox.spi.InboxStore;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -8,15 +16,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
-
-import io.github.zhanghslq.muskit.inbox.InboxAttempt;
-import io.github.zhanghslq.muskit.inbox.InboxClaim;
-import io.github.zhanghslq.muskit.inbox.InboxDecision;
-import io.github.zhanghslq.muskit.inbox.InboxOwnershipLostException;
-import io.github.zhanghslq.muskit.inbox.InboxRequest;
-import io.github.zhanghslq.muskit.inbox.InboxStatus;
-import io.github.zhanghslq.muskit.inbox.InboxStore;
-import io.github.zhanghslq.muskit.inbox.InboxStoreException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcOperations;
 

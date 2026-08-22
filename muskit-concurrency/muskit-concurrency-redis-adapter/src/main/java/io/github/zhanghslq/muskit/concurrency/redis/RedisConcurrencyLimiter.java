@@ -1,5 +1,9 @@
 package io.github.zhanghslq.muskit.concurrency.redis;
 
+import io.github.zhanghslq.muskit.concurrency.exception.ConcurrencyBackendException;
+import io.github.zhanghslq.muskit.concurrency.model.ConcurrencyRequest;
+import io.github.zhanghslq.muskit.concurrency.spi.ConcurrencyLimiter;
+import io.github.zhanghslq.muskit.concurrency.spi.ConcurrencyPermit;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -14,11 +18,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyBackendException;
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyLimiter;
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyPermit;
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyRequest;
 import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;

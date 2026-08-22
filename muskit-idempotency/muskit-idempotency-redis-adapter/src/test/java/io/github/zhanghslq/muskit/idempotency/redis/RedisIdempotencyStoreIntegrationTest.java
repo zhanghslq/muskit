@@ -1,9 +1,8 @@
 package io.github.zhanghslq.muskit.idempotency.redis;
 
-import java.util.concurrent.TimeUnit;
-
-import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
+import io.github.zhanghslq.muskit.idempotency.spi.IdempotencyStore;
 import io.github.zhanghslq.muskit.test.idempotency.IdempotencyStoreContract;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Timeout;

@@ -1,10 +1,9 @@
 package io.github.zhanghslq.muskit.cache.autoconfigure;
 
+import io.github.zhanghslq.muskit.cache.model.CacheFailureMode;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import io.github.zhanghslq.muskit.cache.CacheFailureMode;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**

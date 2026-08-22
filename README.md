@@ -630,6 +630,7 @@ public UUID createOrder(Order order) {
 - 不在后端不可用时隐式降级为更弱的本地语义
 
 完整边界见 [`docs/architecture/module-boundaries.md`](docs/architecture/module-boundaries.md)。
+子模块内部的功能与职责分包约定见 [`docs/architecture/package-layout.md`](docs/architecture/package-layout.md)。
 新增或替换基础设施 Provider 时，必须复用 [`docs/testing/provider-contracts.md`](docs/testing/provider-contracts.md) 中说明的公共契约测试。
 
 ## 已完成路线

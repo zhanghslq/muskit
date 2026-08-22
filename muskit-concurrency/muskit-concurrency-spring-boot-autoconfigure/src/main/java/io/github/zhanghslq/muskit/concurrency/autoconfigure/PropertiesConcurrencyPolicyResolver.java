@@ -1,10 +1,9 @@
 package io.github.zhanghslq.muskit.concurrency.autoconfigure;
 
+import io.github.zhanghslq.muskit.concurrency.exception.UnknownConcurrencyPolicyException;
+import io.github.zhanghslq.muskit.concurrency.model.ConcurrencyPolicy;
+import io.github.zhanghslq.muskit.concurrency.spi.ConcurrencyPolicyResolver;
 import java.util.Objects;
-
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyPolicy;
-import io.github.zhanghslq.muskit.concurrency.ConcurrencyPolicyResolver;
-import io.github.zhanghslq.muskit.concurrency.UnknownConcurrencyPolicyException;
 
 /**
  * 从 Spring Boot 配置属性中解析并发策略。

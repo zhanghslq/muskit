@@ -1,10 +1,11 @@
 package io.github.zhanghslq.muskit.inbox.autoconfigure;
 
-import io.github.zhanghslq.muskit.inbox.InboxPolicyResolver;
-import io.github.zhanghslq.muskit.inbox.InboxProcessor;
-import io.github.zhanghslq.muskit.inbox.InboxStore;
-import io.github.zhanghslq.muskit.inbox.InboxTemplate;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
+import io.github.zhanghslq.muskit.inbox.autoconfigure.jdbc.MuskitInboxJdbcAutoConfiguration;
+import io.github.zhanghslq.muskit.inbox.service.InboxProcessor;
+import io.github.zhanghslq.muskit.inbox.service.InboxTemplate;
+import io.github.zhanghslq.muskit.inbox.spi.InboxPolicyResolver;
+import io.github.zhanghslq.muskit.inbox.spi.InboxStore;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;

@@ -1,9 +1,10 @@
 package io.github.zhanghslq.muskit.observation.autoconfigure;
 
-import io.github.zhanghslq.muskit.observation.MuskitMetric;
-import io.github.zhanghslq.muskit.observation.MuskitObservationRegistry;
-import io.github.zhanghslq.muskit.observation.ObservationTags;
+import io.github.zhanghslq.muskit.observation.autoconfigure.endpoint.MuskitEndpoint;
 import io.github.zhanghslq.muskit.observation.micrometer.MicrometerMuskitObservationRegistry;
+import io.github.zhanghslq.muskit.observation.model.MuskitMetric;
+import io.github.zhanghslq.muskit.observation.model.ObservationTags;
+import io.github.zhanghslq.muskit.observation.spi.MuskitObservationRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;

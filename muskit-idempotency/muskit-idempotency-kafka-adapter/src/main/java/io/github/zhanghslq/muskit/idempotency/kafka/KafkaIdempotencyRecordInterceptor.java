@@ -1,14 +1,13 @@
 package io.github.zhanghslq.muskit.idempotency.kafka;
 
+import io.github.zhanghslq.muskit.idempotency.exception.IdempotencyInProgressException;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyAttempt;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyClaim;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyDecision;
+import io.github.zhanghslq.muskit.idempotency.model.IdempotencyRequest;
+import io.github.zhanghslq.muskit.idempotency.spi.IdempotencyStore;
 import java.time.Duration;
 import java.util.Objects;
-
-import io.github.zhanghslq.muskit.idempotency.IdempotencyAttempt;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyClaim;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyDecision;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyInProgressException;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyRequest;
-import io.github.zhanghslq.muskit.idempotency.IdempotencyStore;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.listener.RecordInterceptor;
